@@ -26,3 +26,6 @@ jobs:
 
       - run: dotnet restore apps/billing/BillingApi.Core/BillingApi.Core.csproj
       - run: dotnet build apps/billing/BillingApi.Core/BillingApi.Core.csproj --no-restore --configuration Release
+
+      - run: dotnet restore legacy/LegacyGateway.Framework/LegacyGateway.Framework.csproj
+      - run: dotnet build legacy/LegacyGateway.Framework/LegacyGateway.Framework.csproj --no-restore --configuration Release
