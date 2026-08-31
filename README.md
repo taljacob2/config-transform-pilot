@@ -42,23 +42,33 @@ deliberately partial overlay coverage — not every client overrides every setti
 every project has overlays for every client, to prove that "missing overlay ≠ error" holds in
 practice, not just in `config-transform`'s own unit tests.
 
+## Setup
+
+Running anything here beyond reading the (encrypted) source requires two GitHub Actions secrets
+and, for local work, git-crypt and a NuGet feed credential. See `SECRETS.md` for the full
+setup — what each secret is for, how to generate the git-crypt key from scratch versus obtaining
+an existing one, and how to unlock and run the tools on a local machine.
+
 ## Status
 
-- The three projects above build in CI on both Windows and Linux (`.github/workflows/build.yml`).
-- `.configtransform/` manifests and overlays exist for all three projects, three clients
+- The four projects above build in CI on both Windows and Linux (`.github/workflows/build.yml`).
+- `.configtransform/` manifests and overlays exist for all four projects, three clients
   (Acme, Globex, Initech) x two environments (Staging, Production), with deliberately partial
   coverage — Initech has no `Clients/` directory at all, for any project.
 - `.configtransform/**` is encrypted at rest with git-crypt (`.gitattributes`); GitHub's web UI
   correctly shows these files as opaque binary blobs.
 - `.github/workflows/build-transformed.yml` (manual `workflow_dispatch`, `client`/`environment`
-  inputs) builds all three projects, resolves each project's config file for the requested
+  inputs) builds all four projects, resolves each project's config file for the requested
   target, validates the merged output is well-formed, and uploads it as a build artifact — per
   `CONFIG_MANAGEMENT.md` §8.2.
 - `build-transformed.yml` has run successfully end to end for `Acme`/`Production`,
   `Globex`/`Staging`, and `Initech`/`Staging` — real client overrides, environment-only
   fallback, and "no client overlay directory at all" all confirmed correct. Along the way it
-  caught a real bug in `config-transform` itself (a UTF-8/UTF-16 XML-declaration mismatch),
-  now fixed upstream in `0.1.0-alpha2` and pinned here. See `FINDINGS.md` for the full writeup.
+  caught a real bug in `config-transform` itself (a UTF-8/UTF-16 XML-declaration mismatch), fixed
+  upstream in `0.1.0-alpha2`. This repo is now pinned to `0.2.0-alpha` (also verified end to end
+  across all three client/environment combinations), which additionally renamed the manifest
+  schema's `project`/`relativeToProject` fields to `directory`/`relativeToDirectory`. See
+  `FINDINGS.md` for the full writeup of both.
 - Confirmed the tool has no `TargetFramework` coupling to the projects whose config files it
   resolves: `LegacyGateway.Framework` (net35, deliberately vanilla — no `Nullable`, no
   `LangVersion` override) builds cleanly and resolves its App.config identically to every net48
