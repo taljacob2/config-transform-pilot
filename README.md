@@ -53,9 +53,8 @@ practice, not just in `config-transform`'s own unit tests.
   inputs) builds all three projects, resolves each project's config file for the requested
   target, validates the merged output is well-formed, and uploads it as a build artifact — per
   `CONFIG_MANAGEMENT.md` §8.2.
-- **Pending repo secrets** before `build-transformed.yml` can actually run successfully:
-  `GIT_CRYPT_KEY_BASE64` (the git-crypt key, base64-encoded) and, if `config-transform`'s
-  GitHub Packages are private, `GH_PACKAGES_TOKEN` (a PAT with `read:packages`). Neither can be
-  set by an AI agent session — GitHub's repo-secrets API requires libsodium-sealed values and
-  isn't exposed through this session's tooling — so a human with repo admin access has to add
-  them once, in Settings → Secrets and variables → Actions.
+- `build-transformed.yml` has run successfully end to end for `Acme`/`Production`,
+  `Globex`/`Staging`, and `Initech`/`Staging` — real client overrides, environment-only
+  fallback, and "no client overlay directory at all" all confirmed correct. Along the way it
+  caught a real bug in `config-transform` itself (a UTF-8/UTF-16 XML-declaration mismatch),
+  now fixed upstream in `0.1.0-alpha2` and pinned here. See `FINDINGS.md` for the full writeup.
