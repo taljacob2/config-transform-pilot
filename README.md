@@ -101,4 +101,7 @@ job-level-scoping bug this change caught in its own first CI run.
   repo root without `cd`-ing into each project's folder first — and staying at the repo root is
   what `config-transform`'s CLI itself already assumes (§"Setup" above), so this also removes a
   real trap: running the tool from inside a project folder resolves `--manifest`/`directory`
-  relative to the wrong place and fails with a confusing "not found" error.
+  relative to the wrong place and fails with a confusing "not found" error. `build.yml` now
+  builds via the `.sln` too (`dotnet restore`/`build config-transform-pilot.sln`, two commands
+  instead of the previous eight, one restore+build pair per project) — which also means CI
+  actually verifies the `.sln` itself stays valid, not just each project individually.
