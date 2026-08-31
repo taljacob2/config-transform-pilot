@@ -3,13 +3,13 @@
   "isRoot": true,
   "tools": {
     "configtransform.xml": {
-      "version": "0.1.0-alpha2",
+      "version": "0.2.0-alpha",
       "commands": [
         "configtransform-xml"
       ]
     },
     "configtransform.json": {
-      "version": "0.1.0-alpha2",
+      "version": "0.2.0-alpha",
       "commands": [
         "configtransform-json"
       ]

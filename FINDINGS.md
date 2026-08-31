@@ -13,7 +13,19 @@ against real client/environment combinations:
 - **No `src/` assumption holds in practice.** Three projects at genuinely different nesting —
   flat (`OrderProcessor.Framework/`), nested once (`Web/AdminPortal.Web/`), nested twice
   (`apps/billing/BillingApi.Core/`) — all resolve correctly via each manifest's explicit
-  `project` path. Nothing in the tool or the manifest schema assumed a common root.
+  `directory` path. Nothing in the tool or the manifest schema assumed a common root.
+- **The manifest's directory field has no `.csproj`/.NET coupling at all — confirmed by using it
+  that way, not just by reading the code.** Raised as a question during this pilot: since the
+  field (originally called `project`) was never actually opened or parsed by the tool, is it
+  really just a generic directory anchor rather than something `.csproj`-specific? Yes —
+  and `config-transform` was refactored to match: the field is now named `directory`, points
+  directly at the directory itself (no more fake `.csproj` filename required), and
+  `MANIFEST_SCHEMA.md` now states explicitly that this works for a Node.js/Angular/React/Flutter
+  project's JSON config, not just a `.csproj`-anchored one. This pilot's four manifests (all
+  `.NET`, since that's what this pilot's projects are) were updated to the new schema as part of
+  upgrading to `0.2.0-alpha` — a real, if small, proof that the migration is mechanical: drop
+  the fake filename from `directory`'s value, rename `relativeToProject` to
+  `relativeToDirectory`, done.
 - **All three config formats work identically through the same pipeline shape**: App.config,
   Web.config (including `system.web`/`system.webServer`/`<location>`-wrapped XDT transforms —
   not just flat `appSettings`), and appsettings.json.
