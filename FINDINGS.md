@@ -111,6 +111,26 @@ nothing here has actually run against a `ghe.com` tenant. The variable indirecti
 job-level scoping are proven end to end on `github.com`; the `ghe.com` URL shape itself is
 confirmed only by documentation, not by a real run against one.
 
+**A second occurrence of the same bug, in the *other* workflow.** `build.yml` (the plain
+per-push/PR build, §8.1) had never needed git-crypt, the tool, or any secret before, because it
+never touched anything client/environment-specific -- just `dotnet restore`/`dotnet build` on
+each project. But `nuget.config` is repo-wide: once its `packageSources` entry started reading
+`%CONFIGTRANSFORM_PACKAGES_SOURCE%`, *every* `dotnet restore`/`dotnet build` in the repo needed
+the same three env vars, not just the ones that actually consume `config-transform`'s own
+package. `build.yml` had no `env:` block at all, so its very first push after the variable
+migration failed identically to run #17 -- `NU1301: The local source '.../%CONFIGTRANSFORM_PACKAGES_SOURCE%' doesn't exist` -- on the first `dotnet restore` step. Fixed the same way: added
+job-level `env:` (`GITHUB_ACTOR`/`GITHUB_TOKEN`/`CONFIGTRANSFORM_PACKAGES_SOURCE`) and
+`permissions: contents: read, packages: read` to `build.yml`'s job, mirroring
+`build-transformed.yml`.
+
+**Generalized lesson, worth folding into `config-transform`'s own docs**: once `nuget.config`
+parameterizes its `packageSources` value via `%VAR%`, the requirement to have that var expandable
+is not scoped to "workflows that use `config-transform`'s CLI tools" -- it's scoped to *any*
+workflow, anywhere in the repo, that runs `dotnet build`/`dotnet restore`/`dotnet tool restore`
+on anything, because NuGet resolves `nuget.config` per-repo, not per-workflow. A repo adopting
+this pattern needs to audit every workflow file that touches `dotnet`, not just the ones it
+thinks of as "the config-transform ones."
+
 ## A real bug found and fixed upstream
 
 `build-transformed.yml`'s first real run against a merged XML file (not `config-transform`'s

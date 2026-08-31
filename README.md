@@ -84,4 +84,6 @@ job-level-scoping bug this change caught in its own first CI run.
   GitHub Enterprise Cloud (`*.ghe.com`) tenants documented in `config-transform`'s
   `SECRETS_AND_LOCAL_SETUP.md`. Confirmed end to end for `Acme`/`Production` after fixing a real
   bug the change's own first CI run caught (the env vars need to be job-level, not scoped to a
-  single step) — see `FINDINGS.md`.
+  single step) — see `FINDINGS.md`. The same bug then hit `build.yml` too (it had never needed
+  these secrets before `nuget.config` started referencing the variable repo-wide) and was fixed
+  the same way.

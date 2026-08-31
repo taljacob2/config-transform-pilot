@@ -10,6 +10,19 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      packages: read
+    env:
+      # Job-level, not step-level -- see build-transformed.yml for why: dotnet
+      # build's implicit restore enumerates every source in nuget.config even
+      # for a project with no dependency on this feed, so %CONFIGTRANSFORM_PACKAGES_SOURCE%
+      # must be expandable on every step here, not just one. This workflow never
+      # needed secrets before nuget.config referenced this variable -- it does now,
+      # since restore touches nuget.config regardless of which workflow runs it.
+      GITHUB_ACTOR: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+      CONFIGTRANSFORM_PACKAGES_SOURCE: ${{ vars.CONFIGTRANSFORM_PACKAGES_SOURCE }}
     steps:
       - uses: actions/checkout@v4
 
