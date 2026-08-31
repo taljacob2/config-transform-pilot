@@ -38,6 +38,7 @@ jobs:
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+          CONFIGTRANSFORM_PACKAGES_SOURCE: ${{ vars.CONFIGTRANSFORM_PACKAGES_SOURCE }}
         run: dotnet tool restore
 
       - run: dotnet build OrderProcessor.Framework/OrderProcessor.Framework.csproj --configuration Release --output publish/OrderProcessor.Framework

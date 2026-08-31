@@ -70,6 +70,37 @@ against real client/environment combinations:
   needs none of git-crypt, the tool, or secrets — confirmed by the fact PRs/pushes never touch
   any of that.
 
+## A design gap found while thinking ahead to GitHub Enterprise Cloud tenants
+
+Not a bug this pilot's CI hit — a gap noticed while designing for `*.ghe.com` (GitHub Enterprise
+Cloud with data residency) support, since the actual multi-client repos this architecture targets
+may not all live on plain `github.com`. Two things confirmed against GitHub's own documentation,
+not assumed:
+
+- The NuGet feed URL isn't a hostname substitution across hosts. `github.com`'s
+  `nuget.pkg.github.com` becomes `nuget.<subdomain>.ghe.com` on a `ghe.com` tenant — the `.pkg.`
+  segment is simply absent there. A template that swaps only the host produces
+  `nuget.pkg.<subdomain>.ghe.com`, which doesn't exist.
+- This repo's own `nuget.config` had `taljacob2`'s feed URL hardcoded directly in the committed
+  file — harmless here since this pilot really is `taljacob2`'s, but exactly the kind of thing
+  that shouldn't appear as a "default" in a *template* doc meant for other repos to copy, since a
+  repo that forgot to override it would silently restore from the wrong account's feed instead of
+  failing loudly.
+
+Fixed by adding a `CONFIGTRANSFORM_PACKAGES_SOURCE` repository **variable** (not secret — a feed
+URL isn't sensitive), read by `nuget.config` through the same `%VAR%` expansion already used for
+credentials, with the value now unset in this repo's own committed files entirely — it lives only
+in this repo's Settings → Secrets and variables → Actions → Variables tab. See
+`config-transform`'s `docs/SECRETS_AND_LOCAL_SETUP.md` §1 for the full design and the cross-host
+caveat (Actions egress allowlists, PAT-must-be-minted-on-the-serving-host) that applies when the
+consuming repo and the packages-publishing repo live on different GitHub hosts.
+
+**Not yet exercised for real**: this pilot itself still lives entirely on `github.com` — nothing
+here has actually run against a `ghe.com` tenant. The variable indirection is proven to work
+end to end on `github.com` (see "What was validated end to end" below once this repo's own
+`CONFIGTRANSFORM_PACKAGES_SOURCE` variable is set and `build-transformed.yml` runs again); the
+`ghe.com` URL shape itself is confirmed only by documentation, not by a real run against one.
+
 ## A real bug found and fixed upstream
 
 `build-transformed.yml`'s first real run against a merged XML file (not `config-transform`'s

@@ -44,10 +44,16 @@ practice, not just in `config-transform`'s own unit tests.
 
 ## Setup
 
-Running anything here beyond reading the (encrypted) source requires two GitHub Actions secrets
-and, for local work, git-crypt and a NuGet feed credential. See `SECRETS.md` for the full
-setup — what each secret is for, how to generate the git-crypt key from scratch versus obtaining
-an existing one, and how to unlock and run the tools on a local machine.
+Running anything here beyond reading the (encrypted) source requires two GitHub Actions secrets,
+one repository variable, and, for local work, git-crypt and a NuGet feed credential. See
+`SECRETS.md` for the full setup — what each secret/variable is for, how to generate the git-crypt
+key from scratch versus obtaining an existing one, and how to unlock and run the tools on a local
+machine.
+
+**Note:** `CONFIGTRANSFORM_PACKAGES_SOURCE` (the repository variable) must be set to
+`https://nuget.pkg.github.com/taljacob2/index.json` before `build-transformed.yml` will pass
+again — a prior version of this repo had that URL hardcoded directly in `nuget.config`; it's now
+read from this variable instead (`SECRETS.md` and `FINDINGS.md` explain why).
 
 ## Status
 

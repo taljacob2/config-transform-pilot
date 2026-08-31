@@ -4,17 +4,34 @@ What has to be configured — in GitHub and on a developer's machine — for thi
 work, and how to set each piece up from scratch. This was previously only explained ad hoc in
 chat; this file is the durable version.
 
-## GitHub Actions secrets
+## GitHub Actions secrets and variables
 
 Settings → Secrets and variables → Actions, on this repo
-(`https://github.com/taljacob2/config-transform-pilot/settings/secrets/actions`). Both are
-consumed by `.github/workflows/build-transformed.yml` only — `build.yml` (the one that runs on
-every push/PR) needs neither, by design (`CONFIG_MANAGEMENT.md` §8.1 in `config-transform`).
+(`https://github.com/taljacob2/config-transform-pilot/settings/secrets/actions`) — secrets and
+variables are two tabs on that same page. Both are consumed by
+`.github/workflows/build-transformed.yml` only — `build.yml` (the one that runs on every
+push/PR) needs neither, by design (`CONFIG_MANAGEMENT.md` §8.1 in `config-transform`).
 
 | Secret | Required? | Purpose |
 |---|---|---|
 | `GIT_CRYPT_KEY_BASE64` | Always | Unlocks `.configtransform/**` (git-crypt encrypted) so the workflow can read the manifests and overlays. |
 | `GH_PACKAGES_TOKEN` | Only if `config-transform`'s GitHub Packages are private | Lets `dotnet tool restore` pull `ConfigTransform.Xml`/`.Json`. A workflow's own default `GITHUB_TOKEN` cannot read packages published under a *different* private repository, even one owned by the same account — confirmed the hard way in this repo; see `FINDINGS.md`. |
+
+| Variable | Required? | Purpose |
+|---|---|---|
+| `CONFIGTRANSFORM_PACKAGES_SOURCE` | Always | The full NuGet v3 feed URL `dotnet tool restore` pulls `ConfigTransform.Xml`/`.Json` from. A **variable**, not a secret — it's a URL, not sensitive, and it's meant to be visible in the workflow run log. For this repo: `https://nuget.pkg.github.com/taljacob2/index.json`. |
+
+Variables, not secrets, because nothing about a feed URL needs to be hidden — the opposite,
+actually: it's useful to see which feed a run pulled from directly in the log. There is
+deliberately **no default value** baked into the workflow or `nuget.config` for this one (no
+`vars.X || 'https://nuget.pkg.github.com/taljacob2/index.json'` fallback) — a silent default
+tied to one specific owner is exactly the kind of thing that's easy to copy into another repo
+without noticing it's still pointing at someone else's feed. Setting it explicitly, always, costs
+one repo variable and avoids that class of mistake entirely. See
+`SECRETS_AND_LOCAL_SETUP.md` in `config-transform` §1 for the full reasoning, including how this
+generalizes to a GitHub Enterprise Cloud with data residency (`*.ghe.com`) tenant, where the feed
+host isn't just `github.com` with a different name — the URL shape itself changes
+(`nuget.pkg.github.com` → `nuget.<subdomain>.ghe.com`, no `.pkg.` segment).
 
 ### `GIT_CRYPT_KEY_BASE64`
 
@@ -85,7 +102,7 @@ see that same doc's §7.4 if that ever applies to a repo with actual secrets in 
 ### `GH_PACKAGES_TOKEN`
 
 First check whether you actually need it: open
-`https://github.com/<owner>?tab=packages` and look at the `ConfigTransform.Xml`/
+`https://github.com/taljacob2?tab=packages` and look at the `ConfigTransform.Xml`/
 `ConfigTransform.Json` package listings.
 
 - **Shows "Private"** → you need this secret. The workflow's own `GITHUB_TOKEN` can only read
@@ -97,6 +114,13 @@ First check whether you actually need it: open
 To create the token: `https://github.com/settings/tokens/new` → check only the `read:packages`
 scope (nothing else — this token should not be able to do anything but read packages) → set an
 expiry → Generate → paste the value as the `GH_PACKAGES_TOKEN` secret here.
+
+(Both URLs above are `github.com` because that's where `config-transform` and this pilot both
+actually live. If you're copying this doc as a template for a repo on a different GitHub host —
+including a `*.ghe.com` data-residency tenant — swap `github.com` for that host in both places;
+see `SECRETS_AND_LOCAL_SETUP.md` in `config-transform` §1 for what else changes, and in
+particular the cross-host caveat if the packages feed and the consuming repo don't live on the
+same host.)
 
 ## Local developer setup
 
@@ -130,33 +154,39 @@ real (decrypted) overlays — not just to read the encrypted blobs GitHub shows 
    lock` re-encrypts it locally if you want to double check the round-trip, or before leaving a
    shared/untrusted machine unattended.
 5. **Restore the pinned CLI tools** (`ConfigTransform.Xml`/`.Json`, versions pinned in
-   `.config/dotnet-tools.json`) — set the two credential env vars `nuget.config` reads, then
-   restore:
+   `.config/dotnet-tools.json`) — set the three env vars `nuget.config` reads, then restore:
    - **Linux/macOS/Git Bash:**
      ```bash
      export GITHUB_ACTOR=<your-github-username>
      export GITHUB_TOKEN=<a PAT with read:packages>   # only needed if the packages are private
+     export CONFIGTRANSFORM_PACKAGES_SOURCE=https://nuget.pkg.github.com/taljacob2/index.json
      dotnet tool restore
      ```
    - **Windows PowerShell:**
      ```powershell
      $env:GITHUB_ACTOR = "<your-github-username>"
      $env:GITHUB_TOKEN = "<a PAT with read:packages>"   # only needed if the packages are private
+     $env:CONFIGTRANSFORM_PACKAGES_SOURCE = "https://nuget.pkg.github.com/taljacob2/index.json"
      dotnet tool restore
      ```
    - **Windows cmd.exe:**
      ```
      set GITHUB_ACTOR=<your-github-username>
      set GITHUB_TOKEN=<a PAT with read:packages>
+     set CONFIGTRANSFORM_PACKAGES_SOURCE=https://nuget.pkg.github.com/taljacob2/index.json
      dotnet tool restore
      ```
    `nuget.config` in this repo's root already points at the GitHub Packages feed and reads
-   credentials from these two env vars (`%GITHUB_ACTOR%`/`%GITHUB_TOKEN%`) — nothing is
+   both the source URL and the credentials from these env vars
+   (`%CONFIGTRANSFORM_PACKAGES_SOURCE%`/`%GITHUB_ACTOR%`/`%GITHUB_TOKEN%`) — nothing is
    hardcoded, so this works the same on every platform, the same way it does in CI (the same PAT
-   as `GH_PACKAGES_TOKEN` above works fine here too; a personal PAT is equally valid). Setting
-   them with `$env:`/`set` only lasts for that shell session — add them to your shell profile
-   (PowerShell `$PROFILE`, `.bashrc`) or a persistent user/system environment variable
-   (`setx GITHUB_ACTOR ...` on Windows) if you don't want to re-set them every time.
+   as `GH_PACKAGES_TOKEN` above works fine here too; a personal PAT is equally valid). The feed
+   URL above is specific to this repo (`taljacob2`'s `github.com` feed) — a repo on a different
+   host would set a different value there; see `SECRETS_AND_LOCAL_SETUP.md` in
+   `config-transform` §1. Setting these with `$env:`/`set` only lasts for that shell session —
+   add them to your shell profile (PowerShell `$PROFILE`, `.bashrc`) or a persistent user/system
+   environment variable (`setx GITHUB_ACTOR ...` on Windows) if you don't want to re-set them
+   every time.
 6. **Run the tool** exactly as `build-transformed.yml` does — the invocation itself is identical
    on every platform:
    ```
