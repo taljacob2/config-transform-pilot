@@ -95,11 +95,21 @@ in this repo's Settings → Secrets and variables → Actions → Variables tab.
 caveat (Actions egress allowlists, PAT-must-be-minted-on-the-serving-host) that applies when the
 consuming repo and the packages-publishing repo live on different GitHub hosts.
 
-**Not yet exercised for real**: this pilot itself still lives entirely on `github.com` — nothing
-here has actually run against a `ghe.com` tenant. The variable indirection is proven to work
-end to end on `github.com` (see "What was validated end to end" below once this repo's own
-`CONFIGTRANSFORM_PACKAGES_SOURCE` variable is set and `build-transformed.yml` runs again); the
-`ghe.com` URL shape itself is confirmed only by documentation, not by a real run against one.
+**Confirmed end to end on `github.com`** (`build-transformed.yml` run #18) — with one real bug
+caught along the way, not anticipated in the initial design: the env vars were first wired onto
+only the `dotnet tool restore` step, and the very first run against them failed with `NU1301`
+(`dotnet build`'s implicit restore for `OrderProcessor.Framework.csproj` — a project with *no*
+dependency on this feed — still enumerates every configured source, so
+`%CONFIGTRANSFORM_PACKAGES_SOURCE%` needs to be expandable on every step that runs
+`dotnet build`/`dotnet restore`, not just one). Fixed by moving all three env vars
+(`GITHUB_ACTOR`/`GITHUB_TOKEN`/`CONFIGTRANSFORM_PACKAGES_SOURCE`) to the job's own `env:` block;
+run #18 with that fix succeeded. `config-transform`'s `docs/SECRETS_AND_LOCAL_SETUP.md` §1 was
+corrected to show job-level scoping from the start.
+
+**Still not exercised for real**: this pilot itself still lives entirely on `github.com` —
+nothing here has actually run against a `ghe.com` tenant. The variable indirection and its
+job-level scoping are proven end to end on `github.com`; the `ghe.com` URL shape itself is
+confirmed only by documentation, not by a real run against one.
 
 ## A real bug found and fixed upstream
 

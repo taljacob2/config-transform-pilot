@@ -50,10 +50,10 @@ one repository variable, and, for local work, git-crypt and a NuGet feed credent
 key from scratch versus obtaining an existing one, and how to unlock and run the tools on a local
 machine.
 
-**Note:** `CONFIGTRANSFORM_PACKAGES_SOURCE` (the repository variable) must be set to
-`https://nuget.pkg.github.com/taljacob2/index.json` before `build-transformed.yml` will pass
-again — a prior version of this repo had that URL hardcoded directly in `nuget.config`; it's now
-read from this variable instead (`SECRETS.md` and `FINDINGS.md` explain why).
+The `CONFIGTRANSFORM_PACKAGES_SOURCE` repository variable (set to
+`https://nuget.pkg.github.com/taljacob2/index.json`) replaces what used to be a URL hardcoded
+directly in `nuget.config` — `SECRETS.md` and `FINDINGS.md` explain why, including a real
+job-level-scoping bug this change caught in its own first CI run.
 
 ## Status
 
@@ -79,3 +79,9 @@ read from this variable instead (`SECRETS.md` and `FINDINGS.md` explain why).
   resolves: `LegacyGateway.Framework` (net35, deliberately vanilla — no `Nullable`, no
   `LangVersion` override) builds cleanly and resolves its App.config identically to every net48
   project here.
+- The NuGet feed URL is no longer hardcoded in `nuget.config` — it's read from a
+  `CONFIGTRANSFORM_PACKAGES_SOURCE` repository variable instead, generalizing the pattern for
+  GitHub Enterprise Cloud (`*.ghe.com`) tenants documented in `config-transform`'s
+  `SECRETS_AND_LOCAL_SETUP.md`. Confirmed end to end for `Acme`/`Production` after fixing a real
+  bug the change's own first CI run caught (the env vars need to be job-level, not scoped to a
+  single step) — see `FINDINGS.md`.
