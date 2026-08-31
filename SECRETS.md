@@ -154,7 +154,11 @@ real (decrypted) overlays — not just to read the encrypted blobs GitHub shows 
    lock` re-encrypts it locally if you want to double check the round-trip, or before leaving a
    shared/untrusted machine unattended.
 5. **Restore the pinned CLI tools** (`ConfigTransform.Xml`/`.Json`, versions pinned in
-   `.config/dotnet-tools.json`) — set the three env vars `nuget.config` reads, then restore:
+   `.config/dotnet-tools.json`) — set the three env vars `nuget.config` reads, then restore. The
+   `build-transformed.yml` bug in `FINDINGS.md` (env vars scoped to one CI step, unexpanded on
+   every other) doesn't apply here: a plain shell's `export`/`$env:`/`set` lasts the whole
+   session, so once set, every later command in that terminal sees it — no per-command
+   re-scoping needed.
    - **Linux/macOS/Git Bash:**
      ```bash
      export GITHUB_ACTOR=<your-github-username>
