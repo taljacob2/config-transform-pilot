@@ -124,92 +124,17 @@ same host.)
 
 ## Local developer setup
 
-To run `dotnet tool run configtransform-xml`/`configtransform-json` locally against this repo's
-real (decrypted) overlays — not just to read the encrypted blobs GitHub shows in its web UI:
+For the full step-by-step checklist — install git-crypt, get a PAT, set env vars, unlock,
+restore, run a first command — see `config-transform`'s
+[`docs/ONBOARDING.md`](https://github.com/taljacob2/config-transform/blob/main/docs/ONBOARDING.md),
+which is generic across any repo that consumes `config-transform`. This section only has what's
+specific to *this* repo — the values `ONBOARDING.md`'s "Before you start" asks for:
 
-1. **Install git-crypt.**
-   - **Debian/Ubuntu:** `apt-get install git-crypt`
-   - **macOS:** `brew install git-crypt`
-   - **Windows:**
-     - Chocolatey: `choco install git-crypt`
-     - Scoop: `scoop install git-crypt`
-     - Or download the prebuilt `.exe` from git-crypt's
-       [GitHub releases](https://github.com/AGWA/git-crypt/releases) and put it somewhere on
-       `PATH` (e.g. alongside `git.exe`, typically under `C:\Program Files\Git\cmd\` if you use
-       Git for Windows). Git for Windows itself does **not** bundle git-crypt — it has to be
-       installed separately by one of these routes, on top of Git.
-   - Verify with `git-crypt --version` on any platform.
-2. **Clone this repo** normally (`git clone`, GitHub Desktop, Visual Studio's built-in Git
-   support — whatever you'd normally use). Everything under `.configtransform/` will show up as
-   opaque binary — that's git-crypt working correctly, not a broken clone.
-3. **Get the git-crypt key** from whoever holds it (password manager/vault entry — never via
-   git, chat, or email in plaintext), saved locally as e.g. `~/keys/config-transform-pilot.key`
-   (Linux/macOS/Git Bash) or `C:\keys\config-transform-pilot.key` (Windows).
-4. **Unlock** — identical command on every platform (PowerShell, cmd, or Git Bash), since
-   `git-crypt.exe`/`git-crypt` takes a plain file path either way:
-   ```
-   git-crypt unlock C:\keys\config-transform-pilot.key
-   ```
-   `.configtransform/**` is now readable/writable as plaintext in your working copy. `git-crypt
-   lock` re-encrypts it locally if you want to double check the round-trip, or before leaving a
-   shared/untrusted machine unattended.
-
-   **A real mistake, worth naming directly: make sure this file is the raw decoded key, not the
-   base64 text.** The two look similar enough to mix up — the same key exists in two forms, the
-   raw binary keyfile `git-crypt export-key` produces, and the base64-encoded single-line version
-   of it that goes into the `GIT_CRYPT_KEY_BASE64` CI secret (§ above). If whoever handed you the
-   key gave you the base64 form (or you saved a password-manager entry that held the base64 text
-   directly) and you save *that* as your local key file, `git-crypt unlock` fails with
-   `<path>: not a valid git-crypt key file` — a real error hit while setting up this repo. Decode
-   it back to binary first:
-   ```powershell
-   [IO.File]::WriteAllBytes("C:\keys\config-transform-pilot.key", [Convert]::FromBase64String((Get-Content "C:\keys\config-transform-pilot.key.b64" -Raw)))
-   ```
-   (or `base64 -d` on Linux/macOS/Git Bash) before pointing `git-crypt unlock` at it.
-5. **Restore the pinned CLI tools** (`ConfigTransform.Xml`/`.Json`, versions pinned in
-   `.config/dotnet-tools.json`) — set the three env vars `nuget.config` reads, then restore. The
-   `build-transformed.yml` bug in `FINDINGS.md` (env vars scoped to one CI step, unexpanded on
-   every other) doesn't apply here: a plain shell's `export`/`$env:`/`set` lasts the whole
-   session, so once set, every later command in that terminal sees it — no per-command
-   re-scoping needed.
-   - **Linux/macOS/Git Bash:**
-     ```bash
-     export GITHUB_ACTOR=<your-github-username>
-     export GITHUB_TOKEN=<a PAT with read:packages>   # only needed if the packages are private
-     export CONFIGTRANSFORM_PACKAGES_SOURCE=https://nuget.pkg.github.com/taljacob2/index.json
-     dotnet tool restore
-     ```
-   - **Windows PowerShell:**
-     ```powershell
-     $env:GITHUB_ACTOR = "<your-github-username>"
-     $env:GITHUB_TOKEN = "<a PAT with read:packages>"   # only needed if the packages are private
-     $env:CONFIGTRANSFORM_PACKAGES_SOURCE = "https://nuget.pkg.github.com/taljacob2/index.json"
-     dotnet tool restore
-     ```
-   - **Windows cmd.exe:**
-     ```
-     set GITHUB_ACTOR=<your-github-username>
-     set GITHUB_TOKEN=<a PAT with read:packages>
-     set CONFIGTRANSFORM_PACKAGES_SOURCE=https://nuget.pkg.github.com/taljacob2/index.json
-     dotnet tool restore
-     ```
-   `nuget.config` in this repo's root already points at the GitHub Packages feed and reads
-   both the source URL and the credentials from these env vars
-   (`%CONFIGTRANSFORM_PACKAGES_SOURCE%`/`%GITHUB_ACTOR%`/`%GITHUB_TOKEN%`) — nothing is
-   hardcoded, so this works the same on every platform, the same way it does in CI (the same PAT
-   as `GH_PACKAGES_TOKEN` above works fine here too; a personal PAT is equally valid). The feed
-   URL above is specific to this repo (`taljacob2`'s `github.com` feed) — a repo on a different
-   host would set a different value there; see `SECRETS_AND_LOCAL_SETUP.md` in
-   `config-transform` §1. Setting these with `$env:`/`set` only lasts for that shell session —
-   add them to your shell profile (PowerShell `$PROFILE`, `.bashrc`) or a persistent user/system
-   environment variable (`setx GITHUB_ACTOR ...` on Windows) if you don't want to re-set them
-   every time.
-6. **Run the tool** exactly as `build-transformed.yml` does — the invocation itself is identical
-   on every platform:
-   ```
-   dotnet tool run configtransform-xml -- --manifest .configtransform/OrderProcessor.Framework/manifest.json --file App.config --client Acme --environment Production --diff
-   ```
-
-No .NET SDK install instructions here beyond `dotnet tool restore` needing one — see
-`config-transform`'s own `docs/GETTING_STARTED.md` for the SDK-on-every-developer-machine
-assumption this all rests on.
+- **This repo does use git-crypt** for `.configtransform/**`. Ask whoever set it up for the key
+  (see `GIT_CRYPT_KEY_BASE64` above).
+- **Feed URL:** `https://nuget.pkg.github.com/taljacob2/index.json`
+- **Example manifest to try first:** `.configtransform/OrderProcessor.Framework/manifest.json`
+- **Example first command** (once set up):
+  ```
+  dotnet tool run configtransform-xml -- --manifest .configtransform/OrderProcessor.Framework/manifest.json --file App.config --client Acme --environment Production --diff
+  ```

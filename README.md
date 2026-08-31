@@ -105,3 +105,7 @@ job-level-scoping bug this change caught in its own first CI run.
   builds via the `.sln` too (`dotnet restore`/`build config-transform-pilot.sln`, two commands
   instead of the previous eight, one restore+build pair per project) — which also means CI
   actually verifies the `.sln` itself stays valid, not just each project individually.
+- `SECRETS.md`'s "Local developer setup" section is now just this repo's specific values (feed
+  URL, example manifest/command) — the step-by-step checklist itself moved to
+  `config-transform`'s new `docs/ONBOARDING.md`, generic across any repo that consumes the tool,
+  so it isn't duplicated here and in `config-transform`'s own `SECRETS_AND_LOCAL_SETUP.md`.
