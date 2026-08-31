@@ -1,0 +1,6 @@
+{
+  "project": "apps/billing/BillingApi.Core/BillingApi.Core.csproj",
+  "files": [
+    { "relativeToProject": "appsettings.json", "type": "json" }
+  ]
+}

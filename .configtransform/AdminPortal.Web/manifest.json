@@ -1,0 +1,6 @@
+{
+  "project": "Web/AdminPortal.Web/AdminPortal.Web.csproj",
+  "files": [
+    { "relativeToProject": "Web.config", "type": "xml" }
+  ]
+}

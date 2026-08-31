@@ -1,0 +1,8 @@
+{
+  "Billing": {
+    "ApiUrl": "https://acme.billing.internal",
+    "FeatureFlags": {
+      "EnableProration": true
+    }
+  }
+}

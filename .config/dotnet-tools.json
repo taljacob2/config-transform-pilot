@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "configtransform.xml": {
+      "version": "0.1.0-alpha",
+      "commands": [
+        "configtransform-xml"
+      ]
+    },
+    "configtransform.json": {
+      "version": "0.1.0-alpha",
+      "commands": [
+        "configtransform-json"
+      ]
+    }
+  }
+}

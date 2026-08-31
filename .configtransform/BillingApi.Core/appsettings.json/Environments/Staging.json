@@ -1,0 +1,10 @@
+{
+  "Billing": {
+    "ApiUrl": "https://staging.billing.internal"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug"
+    }
+  }
+}

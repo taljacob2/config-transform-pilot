@@ -1,0 +1,11 @@
+{
+  "Billing": {
+    "ApiUrl": "https://billing.internal",
+    "RetryCount": 5
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Warning"
+    }
+  }
+}
