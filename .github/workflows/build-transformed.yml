@@ -67,8 +67,8 @@ jobs:
 
       - name: Validate merged output is well-formed
         run: |
-          xmllint --noout publish/OrderProcessor.Framework/OrderProcessor.Framework.exe.config
-          xmllint --noout publish/AdminPortal.Web/Web.config
+          python3 -c "import xml.etree.ElementTree as ET; ET.parse(open('publish/OrderProcessor.Framework/OrderProcessor.Framework.exe.config', encoding='utf-8-sig'))"
+          python3 -c "import xml.etree.ElementTree as ET; ET.parse(open('publish/AdminPortal.Web/Web.config', encoding='utf-8-sig'))"
           python3 -c "import json; json.load(open('publish/BillingApi.Core/appsettings.json'))"
 
       - name: Show resolved config (this pilot has no real secrets, so this is safe)
