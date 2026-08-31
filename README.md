@@ -43,7 +43,19 @@ practice, not just in `config-transform`'s own unit tests.
 
 ## Status
 
-See `docs/ROADMAP.md` in this repo (added once the `.configtransform/` tree lands) for what's
-built so far and what's next. As of this commit: the three projects above build in CI
-(`.github/workflows/build.yml`); the manifest/overlay/git-crypt/deployment-workflow slices are
-still to come.
+- The three projects above build in CI on both Windows and Linux (`.github/workflows/build.yml`).
+- `.configtransform/` manifests and overlays exist for all three projects, three clients
+  (Acme, Globex, Initech) x two environments (Staging, Production), with deliberately partial
+  coverage — Initech has no `Clients/` directory at all, for any project.
+- `.configtransform/**` is encrypted at rest with git-crypt (`.gitattributes`); GitHub's web UI
+  correctly shows these files as opaque binary blobs.
+- `.github/workflows/build-transformed.yml` (manual `workflow_dispatch`, `client`/`environment`
+  inputs) builds all three projects, resolves each project's config file for the requested
+  target, validates the merged output is well-formed, and uploads it as a build artifact — per
+  `CONFIG_MANAGEMENT.md` §8.2.
+- **Pending repo secrets** before `build-transformed.yml` can actually run successfully:
+  `GIT_CRYPT_KEY_BASE64` (the git-crypt key, base64-encoded) and, if `config-transform`'s
+  GitHub Packages are private, `GH_PACKAGES_TOKEN` (a PAT with `read:packages`). Neither can be
+  set by an AI agent session — GitHub's repo-secrets API requires libsodium-sealed values and
+  isn't exposed through this session's tooling — so a human with repo admin access has to add
+  them once, in Settings → Secrets and variables → Actions.
