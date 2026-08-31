@@ -87,7 +87,12 @@ job-level-scoping bug this change caught in its own first CI run.
   single step) — see `FINDINGS.md`. The same bug then hit `build.yml` too (it had never needed
   these secrets before `nuget.config` started referencing the variable repo-wide) and was fixed
   the same way.
-- This repo is now pinned to `0.3.0-alpha`, which gives a locked-but-not-yet-`git-crypt unlock`ed
+- This repo was pinned to `0.3.0-alpha`, which gives a locked-but-not-yet-`git-crypt unlock`ed
   manifest an actionable error (naming the file and telling you to run `git-crypt unlock`)
   instead of a raw, confusing JSON parse failure — found via a real local run against this repo.
   See `config-transform`'s `docs/CHANGELOG.md` `[0.3.0-alpha]` section.
+- This repo is now pinned to `0.4.0-alpha`, which adds `--list`: prints a manifest's file entries
+  and which `Environments`/`Clients` overlays actually exist on disk, without needing
+  `--client`/`--environment`/`--output` — e.g.
+  `dotnet tool run configtransform-xml -- --manifest .configtransform/OrderProcessor.Framework/manifest.json --list`.
+  See `config-transform`'s `docs/CHANGELOG.md` `[0.4.0-alpha]` section.
