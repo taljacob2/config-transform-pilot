@@ -1,0 +1,89 @@
+name: build-transformed
+
+on:
+  workflow_dispatch:
+    inputs:
+      client:
+        description: "Client name (Acme, Globex, Initech)"
+        required: true
+        type: string
+      environment:
+        description: "Environment name (Staging, Production)"
+        required: true
+        type: string
+
+jobs:
+  transform:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Unlock git-crypt
+        run: |
+          echo "${{ secrets.GIT_CRYPT_KEY_BASE64 }}" | base64 -d > /tmp/git-crypt-key
+          git-crypt unlock /tmp/git-crypt-key
+          rm /tmp/git-crypt-key
+
+      - name: Restore local tools
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+        run: dotnet tool restore
+
+      - run: dotnet build OrderProcessor.Framework/OrderProcessor.Framework.csproj --configuration Release --output publish/OrderProcessor.Framework
+      - run: dotnet build Web/AdminPortal.Web/AdminPortal.Web.csproj --configuration Release --output publish/AdminPortal.Web
+      - run: dotnet build apps/billing/BillingApi.Core/BillingApi.Core.csproj --configuration Release --output publish/BillingApi.Core
+
+      - name: Resolve OrderProcessor.Framework/App.config
+        run: |
+          dotnet tool run configtransform-xml -- \
+            --manifest .configtransform/OrderProcessor.Framework/manifest.json \
+            --file App.config --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
+            --output publish/OrderProcessor.Framework/OrderProcessor.Framework.exe.config
+
+      - name: Resolve AdminPortal.Web/Web.config
+        run: |
+          dotnet tool run configtransform-xml -- \
+            --manifest .configtransform/AdminPortal.Web/manifest.json \
+            --file Web.config --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
+            --output publish/AdminPortal.Web/Web.config
+
+      - name: Resolve BillingApi.Core/appsettings.json
+        run: |
+          dotnet tool run configtransform-json -- \
+            --manifest .configtransform/BillingApi.Core/manifest.json \
+            --file appsettings.json --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
+            --output publish/BillingApi.Core/appsettings.json
+
+      - name: Validate merged output is well-formed
+        run: |
+          python3 -c "import xml.etree.ElementTree as ET; ET.parse('publish/OrderProcessor.Framework/OrderProcessor.Framework.exe.config')"
+          python3 -c "import xml.etree.ElementTree as ET; ET.parse('publish/AdminPortal.Web/Web.config')"
+          python3 -c "import json; json.load(open('publish/BillingApi.Core/appsettings.json'))"
+
+      - name: Show resolved config (this pilot has no real secrets, so this is safe)
+        run: |
+          echo "::group::OrderProcessor.Framework/App.config"
+          cat publish/OrderProcessor.Framework/OrderProcessor.Framework.exe.config
+          echo "::endgroup::"
+          echo "::group::AdminPortal.Web/Web.config"
+          cat publish/AdminPortal.Web/Web.config
+          echo "::endgroup::"
+          echo "::group::BillingApi.Core/appsettings.json"
+          cat publish/BillingApi.Core/appsettings.json
+          echo "::endgroup::"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: resolved-config-${{ inputs.client }}-${{ inputs.environment }}
+          path: |
+            publish/OrderProcessor.Framework/OrderProcessor.Framework.exe.config
+            publish/AdminPortal.Web/Web.config
+            publish/BillingApi.Core/appsettings.json
