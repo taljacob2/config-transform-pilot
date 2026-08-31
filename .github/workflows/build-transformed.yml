@@ -18,6 +18,19 @@ jobs:
     permissions:
       contents: read
       packages: read
+    env:
+      # Job-level, not step-level: dotnet build's implicit restore for ANY project
+      # enumerates every source in nuget.config, even one none of these projects
+      # actually depend on -- so the %CONFIGTRANSFORM_PACKAGES_SOURCE% expansion has
+      # to be available on every step that runs `dotnet build`/`dotnet restore`, not
+      # just the one that runs `dotnet tool restore`. Learned the hard way: scoping
+      # this to a single step's `env:` left it unexpanded on every later step, which
+      # NuGet then treated as a literal (nonexistent) local path -- NU1301, not an
+      # auth failure, since the source value itself is evaluated unconditionally on
+      # every invocation while credentials are only checked lazily on actual pull.
+      GITHUB_ACTOR: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+      CONFIGTRANSFORM_PACKAGES_SOURCE: ${{ vars.CONFIGTRANSFORM_PACKAGES_SOURCE }}
     steps:
       - uses: actions/checkout@v4
 
@@ -35,10 +48,6 @@ jobs:
           rm /tmp/git-crypt-key
 
       - name: Restore local tools
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
-          CONFIGTRANSFORM_PACKAGES_SOURCE: ${{ vars.CONFIGTRANSFORM_PACKAGES_SOURCE }}
         run: dotnet tool restore
 
       - run: dotnet build OrderProcessor.Framework/OrderProcessor.Framework.csproj --configuration Release --output publish/OrderProcessor.Framework
