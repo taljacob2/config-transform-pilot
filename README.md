@@ -26,6 +26,7 @@ pilot has to happen in a separate, employer-owned session instead.
 | `OrderProcessor.Framework` | `App.config` | repo root (flat) | net48 |
 | `AdminPortal.Web` | `Web.config` | `Web/AdminPortal.Web/` (nested once) | net48 |
 | `BillingApi.Core` | `appsettings.json` | `apps/billing/BillingApi.Core/` (nested twice) | net8.0 |
+| `LegacyGateway.Framework` | `App.config` | `legacy/LegacyGateway.Framework/` | net35 — proves the tool has no `TargetFramework` coupling |
 
 None of these are realistic, fully-featured applications — `AdminPortal.Web` in particular is
 a plain class library standing in for an ASP.NET-hosted web app (no `System.Web`/IIS hosting
@@ -58,3 +59,7 @@ practice, not just in `config-transform`'s own unit tests.
   fallback, and "no client overlay directory at all" all confirmed correct. Along the way it
   caught a real bug in `config-transform` itself (a UTF-8/UTF-16 XML-declaration mismatch),
   now fixed upstream in `0.1.0-alpha2` and pinned here. See `FINDINGS.md` for the full writeup.
+- Confirmed the tool has no `TargetFramework` coupling to the projects whose config files it
+  resolves: `LegacyGateway.Framework` (net35, deliberately vanilla — no `Nullable`, no
+  `LangVersion` override) builds cleanly and resolves its App.config identically to every net48
+  project here.

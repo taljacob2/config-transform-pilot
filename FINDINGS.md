@@ -17,6 +17,19 @@ against real client/environment combinations:
 - **All three config formats work identically through the same pipeline shape**: App.config,
   Web.config (including `system.web`/`system.webServer`/`<location>`-wrapped XDT transforms —
   not just flat `appSettings`), and appsettings.json.
+- **`ConfigTransform.Xml`/`.Json` have no `TargetFramework` coupling to the project a config
+  file belongs to.** Raised as a real concern: the actual multi-client repos this design
+  targets may have projects on genuinely old TFMs (net35/net40/net45/net47/net472), not just
+  net48. Added `LegacyGateway.Framework` — deliberately vanilla net35 (no `Nullable`, no
+  `LangVersion` override, classic `class Program { static void Main() }` shape) — and confirmed
+  both that it builds cleanly cross-platform via the plain SDK-style `dotnet build` (no legacy
+  SDK/targeting-pack setup needed — `Microsoft.NETFramework.ReferenceAssemblies` covers it
+  automatically, the same mechanism that already made net48 buildable on `ubuntu-latest`
+  earlier in this pilot) and that its App.config resolves through the identical layering as
+  every other project's, encoding declaration and all. The earlier
+  `<LangVersion>latest</LangVersion>` fix on `OrderProcessor.Framework`/`AdminPortal.Web` was
+  needed only because *those* demo projects opted into `Nullable` — a choice specific to them,
+  not something old TFMs require or old TFMs' config files need from the tool.
 - **"Missing overlay ≠ error" holds for a client with *zero* overlays anywhere.** Initech has no
   `Clients/Initech/` directory at all, for any of the three projects — not just a missing file
   within an existing directory. `build-transformed.yml` for `Initech`/`Staging` resolved cleanly
