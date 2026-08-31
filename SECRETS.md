@@ -153,6 +153,19 @@ real (decrypted) overlays — not just to read the encrypted blobs GitHub shows 
    `.configtransform/**` is now readable/writable as plaintext in your working copy. `git-crypt
    lock` re-encrypts it locally if you want to double check the round-trip, or before leaving a
    shared/untrusted machine unattended.
+
+   **A real mistake, worth naming directly: make sure this file is the raw decoded key, not the
+   base64 text.** The two look similar enough to mix up — the same key exists in two forms, the
+   raw binary keyfile `git-crypt export-key` produces, and the base64-encoded single-line version
+   of it that goes into the `GIT_CRYPT_KEY_BASE64` CI secret (§ above). If whoever handed you the
+   key gave you the base64 form (or you saved a password-manager entry that held the base64 text
+   directly) and you save *that* as your local key file, `git-crypt unlock` fails with
+   `<path>: not a valid git-crypt key file` — a real error hit while setting up this repo. Decode
+   it back to binary first:
+   ```powershell
+   [IO.File]::WriteAllBytes("C:\keys\config-transform-pilot.key", [Convert]::FromBase64String((Get-Content "C:\keys\config-transform-pilot.key.b64" -Raw)))
+   ```
+   (or `base64 -d` on Linux/macOS/Git Bash) before pointing `git-crypt unlock` at it.
 5. **Restore the pinned CLI tools** (`ConfigTransform.Xml`/`.Json`, versions pinned in
    `.config/dotnet-tools.json`) — set the three env vars `nuget.config` reads, then restore. The
    `build-transformed.yml` bug in `FINDINGS.md` (env vars scoped to one CI step, unexpanded on
