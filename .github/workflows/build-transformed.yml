@@ -67,17 +67,8 @@ jobs:
 
       - name: Validate merged output is well-formed
         run: |
-          validate_xml() {
-            python3 -c "
-import sys, xml.etree.ElementTree as ET
-data = open(sys.argv[1], 'rb').read()
-if data.startswith(b'\xef\xbb\xbf'):
-    data = data[3:]
-ET.fromstring(data)
-" "$1"
-          }
-          validate_xml publish/OrderProcessor.Framework/OrderProcessor.Framework.exe.config
-          validate_xml publish/AdminPortal.Web/Web.config
+          xmllint --noout publish/OrderProcessor.Framework/OrderProcessor.Framework.exe.config
+          xmllint --noout publish/AdminPortal.Web/Web.config
           python3 -c "import json; json.load(open('publish/BillingApi.Core/appsettings.json'))"
 
       - name: Show resolved config (this pilot has no real secrets, so this is safe)
