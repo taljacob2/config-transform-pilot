@@ -96,3 +96,9 @@ job-level-scoping bug this change caught in its own first CI run.
   `--client`/`--environment`/`--output` — e.g.
   `dotnet tool run configtransform-xml -- --manifest .configtransform/OrderProcessor.Framework/manifest.json --list`.
   See `config-transform`'s `docs/CHANGELOG.md` `[0.4.0-alpha]` section.
+- Added `config-transform-pilot.sln` at the repo root, referencing all four projects at their
+  real (varying-depth) paths. `dotnet build`/`dotnet test`/opening in an IDE now work from the
+  repo root without `cd`-ing into each project's folder first — and staying at the repo root is
+  what `config-transform`'s CLI itself already assumes (§"Setup" above), so this also removes a
+  real trap: running the tool from inside a project folder resolves `--manifest`/`directory`
+  relative to the wrong place and fails with a confusing "not found" error.
