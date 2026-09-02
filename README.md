@@ -91,11 +91,20 @@ job-level-scoping bug this change caught in its own first CI run.
   manifest an actionable error (naming the file and telling you to run `git-crypt unlock`)
   instead of a raw, confusing JSON parse failure — found via a real local run against this repo.
   See `config-transform`'s `docs/CHANGELOG.md` `[0.3.0-alpha]` section.
-- This repo is now pinned to `0.4.0-alpha`, which adds `--list`: prints a manifest's file entries
+- This repo was pinned to `0.4.0-alpha`, which adds `--list`: prints a manifest's file entries
   and which `Environments`/`Clients` overlays actually exist on disk, without needing
   `--client`/`--environment`/`--output` — e.g.
   `dotnet tool run configtransform-xml -- --manifest .configtransform/OrderProcessor.Framework/manifest.json --list`.
   See `config-transform`'s `docs/CHANGELOG.md` `[0.4.0-alpha]` section.
+- This repo is now pinned to `0.5.0-alpha`, which makes `--manifest`/`-m` optional (auto-discovered
+  when exactly one `.configtransform/*/manifest.json` exists — not this repo's own layout, which
+  has four) and adds short flag aliases (`-m`/`-f`/`-c`/`-e`/`-o`) for less typing interactively —
+  e.g. `dotnet tool run configtransform-xml -- -m .configtransform/OrderProcessor.Framework/manifest.json -c Globex -e Production --diff`.
+  See `config-transform`'s `docs/CHANGELOG.md` `[0.5.0-alpha]` section. **Not yet verified against
+  the real published package**: `0.5.0-alpha` is cut (`docs/CHANGELOG.md` committed to
+  `config-transform`'s `main`) but the tag hasn't been pushed yet as of this pin, so
+  `dotnet tool restore` here won't actually resolve `0.5.0-alpha` until `config-transform`'s
+  `publish.yml` has run against it.
 - Added `config-transform-pilot.sln` at the repo root, referencing all four projects at their
   real (varying-depth) paths. `dotnet build`/`dotnet test`/opening in an IDE now work from the
   repo root without `cd`-ing into each project's folder first — and staying at the repo root is
