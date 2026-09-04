@@ -228,6 +228,56 @@ migration off the old schema surfaced several findings worth carrying back upstr
   ever been authored via `set`, old schema or new), and the `--list --resource` tree-wide reverse
   lookup outside the new `build-transformed.yml` `--list` step.
 
+## Migrating to the unified CLI (`0.8.0-alpha`)
+
+`config-transform` merged `ConfigTransform.Xml`/`ConfigTransform.Json` (two separate dotnet
+tools, `configtransform-xml`/`configtransform-json`) into one `ConfigTransform.Cli` tool
+(`configtransform`), dispatching each resource to the right merge engine by its own file
+extension (`config-transform`'s `docs/CHANGELOG.md` `[0.8.0-alpha]` entry). This pilot re-pinned
+`.config/dotnet-tools.json` to the single tool and swapped `build-transformed.yml`'s five
+invocations (four per-resource `--resource` calls plus `--list`) to the new command name.
+
+- **Golden-output diff against a real pre-migration baseline, not just reasoning about the
+  change.** Before touching anything, triggered `build-transformed.yml` on `main` (still pinned
+  to `0.7.0-alpha2`, the two-tool CLI) for `Acme`/`Production` — GitHub Actions run
+  [#20](https://github.com/taljacob2/config-transform-pilot/actions/runs/33881345182) — as a real
+  baseline, since no run had actually happened against the current self-describing-overlays
+  schema before this (the prior run predates that migration entirely). Then dispatched the same
+  `Acme`/`Production` combination against the migrated branch — run
+  [#21](https://github.com/taljacob2/config-transform-pilot/actions/runs/33881513970). All four
+  resolved resources (`OrderProcessor.Framework/App.config`, `AdminPortal.Web/Web.config`,
+  `BillingApi.Core/appsettings.json`, `LegacyGateway.Framework/App.config`) came back
+  **byte-for-byte identical** between the two runs, and `--list`'s output (the full resolved
+  layer chain, patch attribution, `extends`) was identical too. The migration is behavior-
+  preserving for every already-supported invocation shape, confirmed against real CI output, not
+  assumed from reading the source.
+- **The real capability change, also confirmed via the same pair of runs.** The "Demonstrate
+  multi-resource mode" step went from two separate tool invocations (`configtransform-xml` then
+  `configtransform-json`, `--resource` omitted on each) to one `configtransform` call. On the
+  `0.7.0-alpha2` baseline run, each of the two calls printed a stderr skip note (`Skipped 1
+  resource(s) not in this tool's format (.config, .xml); run the matching tool for those.` and
+  the JSON-format equivalent) before the *other* tool picked up the rest. On the `0.8.0-alpha`
+  run, the single call wrote all four files with **zero** skip notes — the actual headline
+  capability this version delivers, observed directly in a CI log rather than inferred.
+- **Negative test: Initech/Staging (zero overlays anywhere) still resolves cleanly under the
+  unified CLI.** Dispatched the same branch for `Initech`/`Staging` — run
+  [#22](https://github.com/taljacob2/config-transform-pilot/actions/runs/33882117235). `--list`
+  showed every resource as "not patched here — inherited from
+  `.configtransform/Environments/Staging/configtransform.json`", no error — "missing overlay ≠
+  error" (the `0.7.0-alpha2` migration's own accepted-cost finding, above) is unaffected by the
+  CLI unification. This dispatch also re-confirms the multi-resource-mode asymmetry from that
+  same finding under the new tool: `publish-all/` came back with exactly 3 files (
+  `OrderProcessor.Framework/App.config`, `Web/AdminPortal.Web/Web.config`,
+  `BillingApi.Core/appsettings.json`) — `legacy/LegacyGateway.Framework/App.config` is correctly
+  absent, since no layer in any Staging chain lists it — while the explicit `--resource
+  legacy/LegacyGateway.Framework/App.config` step earlier in the same run still resolved it
+  successfully to base-only content. Same asymmetry, same root cause, unchanged by which CLI
+  binary is doing the resolving.
+- **Nothing else needed to change.** `--list`'s output shape, the layer-resolution semantics
+  (`extends`, patch attribution, inheritance), and every already-authored `configtransform.json`/
+  patch file are untouched — the migration is purely which tool name `build-transformed.yml`
+  invokes and how many calls the multi-resource demo step makes.
+
 ## Deliberately not validated by this pilot
 
 - **Real inventory against an actual solution repo.** This pilot's three projects, their config
