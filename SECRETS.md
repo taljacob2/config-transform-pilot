@@ -15,11 +15,11 @@ push/PR) needs neither, by design (`CONFIG_MANAGEMENT.md` §8.1 in `config-trans
 | Secret | Required? | Purpose |
 |---|---|---|
 | `GIT_CRYPT_KEY_BASE64` | Always | Unlocks `.configtransform/**` (git-crypt encrypted) so the workflow can read the `configtransform.json` layer files and patch files. |
-| `GH_PACKAGES_TOKEN` | Only if `config-transform`'s GitHub Packages are private | Lets `dotnet tool restore` pull `ConfigTransform.Xml`/`.Json`. A workflow's own default `GITHUB_TOKEN` cannot read packages published under a *different* private repository, even one owned by the same account — confirmed the hard way in this repo; see `FINDINGS.md`. |
+| `GH_PACKAGES_TOKEN` | Only if `config-transform`'s GitHub Packages are private | Lets `dotnet tool restore` pull `ConfigTransform.Cli`. A workflow's own default `GITHUB_TOKEN` cannot read packages published under a *different* private repository, even one owned by the same account — confirmed the hard way in this repo; see `FINDINGS.md`. |
 
 | Variable | Required? | Purpose |
 |---|---|---|
-| `CONFIGTRANSFORM_PACKAGES_SOURCE` | Always | The full NuGet v3 feed URL `dotnet tool restore` pulls `ConfigTransform.Xml`/`.Json` from. A **variable**, not a secret — it's a URL, not sensitive, and it's meant to be visible in the workflow run log. For this repo: `https://nuget.pkg.github.com/taljacob2/index.json`. |
+| `CONFIGTRANSFORM_PACKAGES_SOURCE` | Always | The full NuGet v3 feed URL `dotnet tool restore` pulls `ConfigTransform.Cli` from. A **variable**, not a secret — it's a URL, not sensitive, and it's meant to be visible in the workflow run log. For this repo: `https://nuget.pkg.github.com/taljacob2/index.json`. |
 
 Variables, not secrets, because nothing about a feed URL needs to be hidden — the opposite,
 actually: it's useful to see which feed a run pulled from directly in the log. There is
@@ -102,8 +102,8 @@ see that same doc's §7.4 if that ever applies to a repo with actual secrets in 
 ### `GH_PACKAGES_TOKEN`
 
 First check whether you actually need it: open
-`https://github.com/taljacob2?tab=packages` and look at the `ConfigTransform.Xml`/
-`ConfigTransform.Json` package listings.
+`https://github.com/taljacob2?tab=packages` and look at the `ConfigTransform.Cli` package
+listing.
 
 - **Shows "Private"** → you need this secret. The workflow's own `GITHUB_TOKEN` can only read
   packages published from *this* repository — not from `config-transform`, a different private
@@ -140,5 +140,5 @@ specific to *this* repo — the values `ONBOARDING.md`'s "Before you start" asks
 - **Example resource to try first:** `OrderProcessor.Framework/App.config`
 - **Example first command** (once set up):
   ```
-  dotnet tool run configtransform-xml -- --resource OrderProcessor.Framework/App.config --client Acme --environment Production --diff
+  dotnet tool run configtransform -- --resource OrderProcessor.Framework/App.config --client Acme --environment Production --diff
   ```

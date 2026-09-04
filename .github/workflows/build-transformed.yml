@@ -57,28 +57,28 @@ jobs:
 
       - name: Resolve OrderProcessor.Framework/App.config
         run: |
-          dotnet tool run configtransform-xml -- \
+          dotnet tool run configtransform -- \
             --resource OrderProcessor.Framework/App.config \
             --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
             --output publish/OrderProcessor.Framework/OrderProcessor.Framework.exe.config
 
       - name: Resolve Web/AdminPortal.Web/Web.config
         run: |
-          dotnet tool run configtransform-xml -- \
+          dotnet tool run configtransform -- \
             --resource Web/AdminPortal.Web/Web.config \
             --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
             --output publish/AdminPortal.Web/Web.config
 
       - name: Resolve apps/billing/BillingApi.Core/appsettings.json
         run: |
-          dotnet tool run configtransform-json -- \
+          dotnet tool run configtransform -- \
             --resource apps/billing/BillingApi.Core/appsettings.json \
             --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
             --output publish/BillingApi.Core/appsettings.json
 
       - name: Resolve legacy/LegacyGateway.Framework/App.config (net35 project -- proves the tool has no TargetFramework coupling)
         run: |
-          dotnet tool run configtransform-xml -- \
+          dotnet tool run configtransform -- \
             --resource legacy/LegacyGateway.Framework/App.config \
             --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
             --output publish/LegacyGateway.Framework/LegacyGateway.Framework.exe.config
@@ -107,22 +107,21 @@ jobs:
 
       - name: Show the resolved layer chain (--list)
         run: |
-          dotnet tool run configtransform-xml -- \
+          dotnet tool run configtransform -- \
             --list --client "${{ inputs.client }}" --environment "${{ inputs.environment }}"
 
       - name: Demonstrate multi-resource mode (--resource omitted, --output as a directory)
         # Not the deploy path -- .NET Framework needs <AssemblyName>.exe.config next to the exe,
         # and this mode mirrors each resource's own repo-root-relative path under --output instead.
-        # Kept as a real exercise of the new one-call-per-tool capability, and because its output
-        # makes a real property visible: it emits only what the resolved layer CHAIN lists, so
-        # legacy/LegacyGateway.Framework/App.config is absent for every Staging dispatch (no layer
-        # in the Staging chain names it) while the explicit --resource step above still resolves it
-        # to base-only. See FINDINGS.md.
+        # Kept as a real exercise of the unified CLI's headline capability (config-transform
+        # 0.8.0-alpha): one call, both the XML and the JSON resource this layer touches, resolved
+        # together -- no per-format invocation, no stderr skip note (see FINDINGS.md's "Migrating
+        # to the unified CLI" section). Its output also makes a real property visible: it emits
+        # only what the resolved layer CHAIN lists, so legacy/LegacyGateway.Framework/App.config
+        # is absent for every Staging dispatch (no layer in the Staging chain names it) while the
+        # explicit --resource step above still resolves it to base-only.
         run: |
-          dotnet tool run configtransform-xml -- \
-            --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
-            --output publish-all/
-          dotnet tool run configtransform-json -- \
+          dotnet tool run configtransform -- \
             --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
             --output publish-all/
           echo "Resources emitted by multi-resource mode:"

@@ -2,16 +2,10 @@
   "version": 1,
   "isRoot": true,
   "tools": {
-    "configtransform.xml": {
-      "version": "0.7.0-alpha2",
+    "configtransform.cli": {
+      "version": "0.8.0-alpha",
       "commands": [
-        "configtransform-xml"
-      ]
-    },
-    "configtransform.json": {
-      "version": "0.7.0-alpha2",
-      "commands": [
-        "configtransform-json"
+        "configtransform"
       ]
     }
   }
