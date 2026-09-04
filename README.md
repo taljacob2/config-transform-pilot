@@ -1,10 +1,10 @@
 # config-transform-pilot
 
 A synthetic pilot solution repo for exercising
-[`config-transform`](https://github.com/taljacob2/config-transform) end to end — manifest
-resolution, layered overlays, git-crypt at rest, and the workflow-dispatch merged-output
-pipeline — against something closer to a real multi-project solution than the tool's own unit
-test fixtures.
+[`config-transform`](https://github.com/taljacob2/config-transform) end to end — self-describing
+`configtransform.json` layer resolution, layered overlays, git-crypt at rest, and the
+workflow-dispatch merged-output pipeline — against something closer to a real multi-project
+solution than the tool's own unit test fixtures.
 
 This is **not** a real product. It exists to validate `config-transform`'s design against
 repo-shape variety that unit tests can't exercise: multiple projects at different nesting
@@ -13,7 +13,7 @@ depths, no assumed `src/` layout, and three config formats side by side.
 ## Why this repo exists
 
 `config-transform`'s own test suite proves the merge engines are correct in isolation. It
-doesn't prove the manifest/CLI/CI wiring holds up in a solution with more than one project, or
+doesn't prove the layer/CLI/CI wiring holds up in a solution with more than one project, or
 that "don't assume a `src/` folder" is actually true rather than just written down. This repo
 is that proof, kept fully synthetic and disconnected from any real organization's
 infrastructure or secrets — see `docs/ROADMAP.md` in `config-transform` for why a real-world
@@ -42,6 +42,35 @@ deliberately partial overlay coverage — not every client overrides every setti
 every project has overlays for every client, to prove that "missing overlay ≠ error" holds in
 practice, not just in `config-transform`'s own unit tests.
 
+## Overlay tree
+
+Under the old schema the tree structure itself was self-explanatory from directory names. Under
+the new schema the `configtransform.json` files that declare what each layer patches are
+git-crypt-encrypted at rest along with everything else under `.configtransform/**` — so this
+plaintext rendering of the layout is the map:
+
+```
+.configtransform/
+├── Environments/
+│   ├── Production/    -- all 4 projects
+│   └── Staging/        -- OrderProcessor, AdminPortal, BillingApi (not LegacyGateway)
+└── Clients/
+    ├── Acme/
+    │   ├── Production/  -- all 4 projects (extends Environments/Production)
+    │   └── Staging/       -- OrderProcessor, BillingApi (extends Environments/Staging)
+    ├── Globex/
+    │   ├── Production/  -- OrderProcessor, AdminPortal, BillingApi (extends Environments/Production)
+    │   └── Staging/       -- AdminPortal only (extends Environments/Staging)
+    └── Initech/
+        ├── Production/  -- extends Environments/Production, no overlays of its own
+        └── Staging/       -- extends Environments/Staging, no overlays of its own
+```
+
+`LegacyGateway.Framework` is deliberately patched only at `Environments/Production` and
+`Clients/Acme/Production` — every other client/environment combination resolves it to base-only,
+and no layer in any Staging chain lists it at all (see the multi-resource-mode finding in
+`FINDINGS.md`).
+
 ## Setup
 
 Running anything here beyond reading the (encrypted) source requires two GitHub Actions secrets,
@@ -58,9 +87,20 @@ job-level-scoping bug this change caught in its own first CI run.
 ## Status
 
 - The four projects above build in CI on both Windows and Linux (`.github/workflows/build.yml`).
-- `.configtransform/` manifests and overlays exist for all four projects, three clients
-  (Acme, Globex, Initech) x two environments (Staging, Production), with deliberately partial
-  coverage — Initech has no `Clients/` directory at all, for any project.
+- `.configtransform/` holds one `configtransform.json` per layer directory — 2 `Environments/`
+  layers and 6 `Clients/<Client>/<Env>/` layers, each pairing a project's own repo-root-relative
+  path with an optional `patch` file — covering all four projects across three clients (Acme,
+  Globex, Initech) x two environments (Staging, Production), with deliberately partial coverage.
+  See "Overlay tree" below for the full layout.
+- **Every client/environment combination needs a layer file on disk, even with nothing to
+  override.** `Initech` has zero overlays for any project, but its two layer files
+  (`Clients/Initech/Production/configtransform.json`, `Clients/Initech/Staging/configtransform.json`)
+  still exist, each `extends`-only with `"resources": []` — the opposite of the old schema, where
+  Initech needed no `Clients/` directory at all. Without these two files,
+  `config-transform`'s `LayerChain.Build` breaks on the first missing file in the chain and
+  Initech would silently fall back to *raw base* content, losing the Environment layer too, not
+  just the client override. This is `config-transform`'s own documented "accepted cost" of the
+  new design — see `FINDINGS.md` for how this pilot hit it directly during migration.
 - `.configtransform/**` is encrypted at rest with git-crypt (`.gitattributes`); GitHub's web UI
   correctly shows these files as opaque binary blobs.
 - `.github/workflows/build-transformed.yml` (manual `workflow_dispatch`, `client`/`environment`
@@ -93,13 +133,14 @@ job-level-scoping bug this change caught in its own first CI run.
   See `config-transform`'s `docs/CHANGELOG.md` `[0.3.0-alpha]` section.
 - This repo was pinned to `0.4.0-alpha`, which adds `--list`: prints a manifest's file entries
   and which `Environments`/`Clients` overlays actually exist on disk, without needing
-  `--client`/`--environment`/`--output` — e.g.
+  `--client`/`--environment`/`--output` — e.g. (pre-`0.7.0-alpha` CLI, no longer runs as written)
   `dotnet tool run configtransform-xml -- --manifest .configtransform/OrderProcessor.Framework/manifest.json --list`.
   See `config-transform`'s `docs/CHANGELOG.md` `[0.4.0-alpha]` section.
-- This repo is now pinned to `0.5.0-alpha`, which makes `--manifest`/`-m` optional (auto-discovered
+- This repo was pinned to `0.5.0-alpha`, which makes `--manifest`/`-m` optional (auto-discovered
   when exactly one `.configtransform/*/manifest.json` exists — not this repo's own layout, which
   has four) and adds short flag aliases (`-m`/`-f`/`-c`/`-e`/`-o`) for less typing interactively —
-  e.g. `dotnet tool run configtransform-xml -- -m .configtransform/OrderProcessor.Framework/manifest.json -c Globex -e Production --diff`.
+  e.g. (pre-`0.7.0-alpha` CLI, no longer runs as written)
+  `dotnet tool run configtransform-xml -- -m .configtransform/OrderProcessor.Framework/manifest.json -c Globex -e Production --diff`.
   See `config-transform`'s `docs/CHANGELOG.md` `[0.5.0-alpha]` section. Verified via a real
   `build-transformed.yml` `workflow_dispatch` run for `Globex`/`Production` against the published
   `0.5.0-alpha` package.
@@ -107,12 +148,28 @@ job-level-scoping bug this change caught in its own first CI run.
   real (varying-depth) paths. `dotnet build`/`dotnet test`/opening in an IDE now work from the
   repo root without `cd`-ing into each project's folder first — and staying at the repo root is
   what `config-transform`'s CLI itself already assumes (§"Setup" above), so this also removes a
-  real trap: running the tool from inside a project folder resolves `--manifest`/`directory`
-  relative to the wrong place and fails with a confusing "not found" error. `build.yml` now
-  builds via the `.sln` too (`dotnet restore`/`build config-transform-pilot.sln`, two commands
-  instead of the previous eight, one restore+build pair per project) — which also means CI
-  actually verifies the `.sln` itself stays valid, not just each project individually.
+  real trap, more relevant now than when this was first written, not less: every path a
+  `configtransform.json` layer declares (`extends`, `resources[].path`, `resources[].patch`) —
+  and `--resource` itself — resolves against the current working directory as the repo root, so
+  running the tool from inside a project folder resolves everything relative to the wrong place
+  and fails with a confusing "not found" error. `build.yml` now builds via the `.sln` too
+  (`dotnet restore`/`build config-transform-pilot.sln`, two commands instead of the previous
+  eight, one restore+build pair per project) — which also means CI actually verifies the `.sln`
+  itself stays valid, not just each project individually.
 - `SECRETS.md`'s "Local developer setup" section is now just this repo's specific values (feed
   URL, example manifest/command) — the step-by-step checklist itself moved to
   `config-transform`'s new `docs/ONBOARDING.md`, generic across any repo that consumes the tool,
   so it isn't duplicated here and in `config-transform`'s own `SECRETS_AND_LOCAL_SETUP.md`.
+- **Migrated off `manifest.json` entirely, now pinned to `0.7.0-alpha2`** — `config-transform`
+  replaced `manifest.json` and the fixed base→Environments→Clients rule with self-describing
+  `configtransform.json` layers (breaking, see `config-transform`'s `docs/CHANGELOG.md`
+  `[0.7.0-alpha]`/`[0.7.0-alpha2]` sections). `.configtransform/`'s tree was restructured (see
+  "Overlay tree" below), `build-transformed.yml`'s four CLI invocations moved from
+  `--manifest`/`--file` to `--resource`, and a new step demonstrates the new multi-resource mode
+  (`--resource` omitted, `--output` as a directory) into a scratch `publish-all/` folder. The
+  relocation itself needed no git-crypt decryption — every patch file kept its exact
+  git-crypt-encrypted content across the move (`git mv` preserves the ciphertext blob, since the
+  filter only runs at checkout/smudge time); only the eight new `configtransform.json` layer
+  files, which carry no secrets, were authored from scratch. See `FINDINGS.md` for the full
+  migration writeup, including the Initech accepted-cost finding and the multi-resource-mode
+  gap this pilot's new demo step surfaces.

@@ -14,7 +14,7 @@ push/PR) needs neither, by design (`CONFIG_MANAGEMENT.md` §8.1 in `config-trans
 
 | Secret | Required? | Purpose |
 |---|---|---|
-| `GIT_CRYPT_KEY_BASE64` | Always | Unlocks `.configtransform/**` (git-crypt encrypted) so the workflow can read the manifests and overlays. |
+| `GIT_CRYPT_KEY_BASE64` | Always | Unlocks `.configtransform/**` (git-crypt encrypted) so the workflow can read the `configtransform.json` layer files and patch files. |
 | `GH_PACKAGES_TOKEN` | Only if `config-transform`'s GitHub Packages are private | Lets `dotnet tool restore` pull `ConfigTransform.Xml`/`.Json`. A workflow's own default `GITHUB_TOKEN` cannot read packages published under a *different* private repository, even one owned by the same account — confirmed the hard way in this repo; see `FINDINGS.md`. |
 
 | Variable | Required? | Purpose |
@@ -131,10 +131,14 @@ which is generic across any repo that consumes `config-transform`. This section 
 specific to *this* repo — the values `ONBOARDING.md`'s "Before you start" asks for:
 
 - **This repo does use git-crypt** for `.configtransform/**`. Ask whoever set it up for the key
-  (see `GIT_CRYPT_KEY_BASE64` above).
+  (see `GIT_CRYPT_KEY_BASE64` above). If your working copy is still locked, `config-transform`
+  gives an actionable error naming the file and telling you to run `git-crypt unlock` rather than
+  a raw JSON parse failure — this now names a `configtransform.json` file instead of a
+  `manifest.json` (same underlying detection, carried forward unchanged by the `0.7.0-alpha`
+  self-describing-overlays redesign).
 - **Feed URL:** `https://nuget.pkg.github.com/taljacob2/index.json`
-- **Example manifest to try first:** `.configtransform/OrderProcessor.Framework/manifest.json`
+- **Example resource to try first:** `OrderProcessor.Framework/App.config`
 - **Example first command** (once set up):
   ```
-  dotnet tool run configtransform-xml -- --manifest .configtransform/OrderProcessor.Framework/manifest.json --file App.config --client Acme --environment Production --diff
+  dotnet tool run configtransform-xml -- --resource OrderProcessor.Framework/App.config --client Acme --environment Production --diff
   ```

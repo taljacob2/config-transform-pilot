@@ -1,0 +1,8 @@
+{
+  "extends": ".configtransform/Environments/Production/configtransform.json",
+  "resources": [
+    { "path": "OrderProcessor.Framework/App.config", "patch": ".configtransform/Clients/Globex/Production/patch-OrderProcessor.Framework-App.config.xml" },
+    { "path": "Web/AdminPortal.Web/Web.config", "patch": ".configtransform/Clients/Globex/Production/patch-Web-AdminPortal.Web-Web.config.xml" },
+    { "path": "apps/billing/BillingApi.Core/appsettings.json", "patch": ".configtransform/Clients/Globex/Production/patch-apps-billing-BillingApi.Core-appsettings.json.json" }
+  ]
+}
