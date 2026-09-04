@@ -173,3 +173,15 @@ job-level-scoping bug this change caught in its own first CI run.
   files, which carry no secrets, were authored from scratch. See `FINDINGS.md` for the full
   migration writeup, including the Initech accepted-cost finding and the multi-resource-mode
   gap this pilot's new demo step surfaces.
+- **Migrated off the two-tool CLI, now pinned to `0.8.0-alpha`** — `config-transform` merged
+  `ConfigTransform.Xml`/`ConfigTransform.Json` (`configtransform-xml`/`configtransform-json`)
+  into one `ConfigTransform.Cli` tool (`configtransform`), dispatching each resource to the right
+  engine by its own extension (see `config-transform`'s `docs/CHANGELOG.md` `[0.8.0-alpha]`
+  entry). `.config/dotnet-tools.json` now pins a single `configtransform.cli` entry;
+  `build-transformed.yml`'s four per-resource `--resource` invocations and its `--list` step all
+  call `configtransform` instead of the two retired command names. The "Demonstrate
+  multi-resource mode" step collapses from two separate tool invocations (one per format) into
+  one `configtransform` call with `--resource` omitted — the actual headline capability this
+  version delivers: both `AdminPortal.Web/Web.config` (XML) and `BillingApi.Core/appsettings.json`
+  (JSON) resolve together in a single call, no per-format skip note. See `FINDINGS.md` for the
+  golden-output diff against a real pre-migration baseline run.
