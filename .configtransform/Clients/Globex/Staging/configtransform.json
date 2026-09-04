@@ -1,0 +1,6 @@
+{
+  "extends": ".configtransform/Environments/Staging/configtransform.json",
+  "resources": [
+    { "path": "Web/AdminPortal.Web/Web.config", "patch": ".configtransform/Clients/Globex/Staging/patch-Web-AdminPortal.Web-Web.config.xml" }
+  ]
+}

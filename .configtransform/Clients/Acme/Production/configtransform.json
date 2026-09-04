@@ -1,0 +1,9 @@
+{
+  "extends": ".configtransform/Environments/Production/configtransform.json",
+  "resources": [
+    { "path": "OrderProcessor.Framework/App.config", "patch": ".configtransform/Clients/Acme/Production/patch-OrderProcessor.Framework-App.config.xml" },
+    { "path": "Web/AdminPortal.Web/Web.config", "patch": ".configtransform/Clients/Acme/Production/patch-Web-AdminPortal.Web-Web.config.xml" },
+    { "path": "apps/billing/BillingApi.Core/appsettings.json", "patch": ".configtransform/Clients/Acme/Production/patch-apps-billing-BillingApi.Core-appsettings.json.json" },
+    { "path": "legacy/LegacyGateway.Framework/App.config", "patch": ".configtransform/Clients/Acme/Production/patch-legacy-LegacyGateway.Framework-App.config.xml" }
+  ]
+}

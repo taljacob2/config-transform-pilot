@@ -1,0 +1,8 @@
+{
+  "resources": [
+    { "path": "OrderProcessor.Framework/App.config", "patch": ".configtransform/Environments/Production/patch-OrderProcessor.Framework-App.config.xml" },
+    { "path": "Web/AdminPortal.Web/Web.config", "patch": ".configtransform/Environments/Production/patch-Web-AdminPortal.Web-Web.config.xml" },
+    { "path": "apps/billing/BillingApi.Core/appsettings.json", "patch": ".configtransform/Environments/Production/patch-apps-billing-BillingApi.Core-appsettings.json.json" },
+    { "path": "legacy/LegacyGateway.Framework/App.config", "patch": ".configtransform/Environments/Production/patch-legacy-LegacyGateway.Framework-App.config.xml" }
+  ]
+}

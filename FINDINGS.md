@@ -12,20 +12,25 @@ against real client/environment combinations:
 
 - **No `src/` assumption holds in practice.** Three projects at genuinely different nesting —
   flat (`OrderProcessor.Framework/`), nested once (`Web/AdminPortal.Web/`), nested twice
-  (`apps/billing/BillingApi.Core/`) — all resolve correctly via each manifest's explicit
-  `directory` path. Nothing in the tool or the manifest schema assumed a common root.
-- **The manifest's directory field has no `.csproj`/.NET coupling at all — confirmed by using it
-  that way, not just by reading the code.** Raised as a question during this pilot: since the
-  field (originally called `project`) was never actually opened or parsed by the tool, is it
-  really just a generic directory anchor rather than something `.csproj`-specific? Yes —
-  and `config-transform` was refactored to match: the field is now named `directory`, points
-  directly at the directory itself (no more fake `.csproj` filename required), and
-  `MANIFEST_SCHEMA.md` now states explicitly that this works for a Node.js/Angular/React/Flutter
-  project's JSON config, not just a `.csproj`-anchored one. This pilot's four manifests (all
-  `.NET`, since that's what this pilot's projects are) were updated to the new schema as part of
-  upgrading to `0.2.0-alpha` — a real, if small, proof that the migration is mechanical: drop
-  the fake filename from `directory`'s value, rename `relativeToProject` to
-  `relativeToDirectory`, done.
+  (`apps/billing/BillingApi.Core/`) — all resolve correctly via each resource's own
+  repo-root-relative `path` (originally each manifest's explicit `directory` path — see the
+  `0.7.0-alpha2` migration section below for how this carried forward). Nothing in the tool or
+  the layer schema assumed a common root.
+- **The manifest's `directory` field (its `0.7.0-alpha`-era successor is `resources[].path`, see
+  below) had no `.csproj`/.NET coupling at all — confirmed by using it that way, not just by
+  reading the code.** Raised as a question during this pilot: since the field (originally called
+  `project`) was never actually opened or parsed by the tool, is it really just a generic
+  directory anchor rather than something `.csproj`-specific? Yes — and `config-transform` was
+  refactored to match: the field was renamed `directory`, pointed directly at the directory
+  itself (no more fake `.csproj` filename required), and `MANIFEST_SCHEMA.md` stated explicitly
+  that this works for a Node.js/Angular/React/Flutter project's JSON config, not just a
+  `.csproj`-anchored one. This pilot's four manifests (all `.NET`, since that's what this
+  pilot's projects are) were updated to the new schema as part of upgrading to `0.2.0-alpha` — a
+  real, if small, proof that the migration is mechanical: drop the fake filename from
+  `directory`'s value, rename `relativeToProject` to `relativeToDirectory`, done. This claim's
+  successor, `resources[].path` (a path straight to the real config file, no separate directory
+  anchor at all), is `CLAUDE.md`'s own "No coupling to any language, ecosystem, or
+  `TargetFramework`" bullet as of `0.7.0-alpha` — kept here as history, not superseded reasoning.
 - **All three config formats work identically through the same pipeline shape**: App.config,
   Web.config (including `system.web`/`system.webServer`/`<location>`-wrapped XDT transforms —
   not just flat `appSettings`), and appsettings.json.
@@ -42,10 +47,14 @@ against real client/environment combinations:
   `<LangVersion>latest</LangVersion>` fix on `OrderProcessor.Framework`/`AdminPortal.Web` was
   needed only because *those* demo projects opted into `Nullable` — a choice specific to them,
   not something old TFMs require or old TFMs' config files need from the tool.
-- **"Missing overlay ≠ error" holds for a client with *zero* overlays anywhere.** Initech has no
-  `Clients/Initech/` directory at all, for any of the three projects — not just a missing file
-  within an existing directory. `build-transformed.yml` for `Initech`/`Staging` resolved cleanly
-  using only base + Environments layers, no errors, no special-casing needed.
+- **"Missing overlay ≠ error" holds for a client with *zero* overlays anywhere.** Under the
+  original manifest-based schema, Initech had no `Clients/Initech/` directory at all, for any of
+  the three projects — not just a missing file within an existing directory.
+  `build-transformed.yml` for `Initech`/`Staging` resolved cleanly using only base + Environments
+  layers, no errors, no special-casing needed. **This exact claim inverted under the
+  `0.7.0-alpha` self-describing-overlays schema** — see the accepted-cost finding in the
+  migration section below: Initech now needs two layer files that declare *nothing*, specifically
+  so the old "missing directory falls through to Environments" behavior still holds.
 - **Partial, per-project coverage works.** Globex has overlays for `AdminPortal.Web` in both
   environments but only `Production` for the other two projects — confirmed via a real run that
   `Globex`/`Staging` correctly fell back to base+Environments for `OrderProcessor.Framework` and
@@ -66,7 +75,7 @@ against real client/environment combinations:
   concrete requirement, not just "a token is needed."
 - **`build-transformed.yml`'s shape from §8.2 works as specified**: `workflow_dispatch`-only
   trigger, `client`/`environment` as required inputs, git-crypt unlock → tool restore → build →
-  resolve-per-manifest → validate-well-formed, artifact upload. `build.yml` (§8.1) correctly
+  resolve-per-resource → validate-well-formed, artifact upload. `build.yml` (§8.1) correctly
   needs none of git-crypt, the tool, or secrets — confirmed by the fact PRs/pushes never touch
   any of that.
 
@@ -156,6 +165,68 @@ and reloads it with `XDocument.Load(path)` (which *does* honor the declared enco
 **Lesson for `config-transform` generally**: in-memory string assertions are not equivalent to
 a disk round-trip for anything encoding-sensitive. Worth keeping in mind for the JSON side too,
 though `JsonLayerMerger` doesn't have an analogous encoding-declaration mechanism to get wrong.
+
+## Migrating to self-describing `configtransform.json` layers (`0.7.0-alpha2`)
+
+`config-transform` replaced `manifest.json` and the fixed base→Environments→Clients rule with
+self-describing `configtransform.json` layers (breaking, `0.7.0-alpha`). This pilot's own
+migration off the old schema surfaced several findings worth carrying back upstream.
+
+- **The migration is doable while git-crypt-locked, with no decryption at any point.** All 17
+  overlay files under `.configtransform/` were relocated with `git mv` while genuinely locked (no
+  key available in the migrating session) — git-crypt's clean/smudge filters only run at
+  checkout/commit time, not on a rename of an already-encrypted working-tree blob, so every patch
+  file's ciphertext moved unchanged (`git diff --cached --find-renames --stat` showed `R100` with
+  zero content lines on every one). Only the eight new `configtransform.json` layer files needed
+  authoring from scratch — pure structural metadata (which project each layer patches, and its
+  `extends` chain), fully derivable from the old directory tree's names, carrying no secrets.
+  Genuinely useful for a real repo whose migrating engineer may not hold the git-crypt key.
+- **The "accepted cost" is real, and it fails silently, not loudly.** Initech needed two
+  hand-written, `extends`-only, `"resources": []` layer files
+  (`Clients/Initech/Production/configtransform.json`, `Clients/Initech/Staging/configtransform.json`)
+  — under the old schema, Initech needed nothing on disk at all. Without these two files,
+  `config-transform`'s `LayerChain.Build` breaks on the very first missing file in the chain and
+  returns an *empty* chain — so Initech would resolve to raw *base* content, silently losing the
+  Environment layer too, not just the (correctly absent) client override.
+  `MANIFEST_SCHEMA.md` documents this as a deliberate design tradeoff, but a real repo hit it on
+  its very first migration, which is the difference between a documented caveat and a
+  demonstrated one — worth feeding back upstream as a candidate for a `--list`-style "which
+  client/environment combinations have no layer file at all?" audit command, so this failure mode
+  can be caught before a real deploy rather than by careful reading of the design doc.
+- **Multi-resource mode (`--resource` omitted) emits only what the resolved layer *chain*
+  lists — not everything that would resolve correctly with an explicit `--resource`.**
+  `LegacyGateway.Framework/App.config` is deliberately patched only at `Environments/Production`
+  and `Clients/Acme/Production`; no layer in any *Staging* chain lists it at all. An explicit
+  `--resource legacy/LegacyGateway.Framework/App.config --client <any> --environment Staging`
+  still resolves correctly to base-only content (`LayerChain.ResolveResource` reports "not
+  listed, skipping" and falls through), but `--output <dir>` with `--resource` omitted never
+  emits a file for it on any Staging dispatch, because `LayerChain.ResolveAllResources` only
+  unions `resources[].path` values actually present in the chain. Both behaviors are correct per
+  the design; the asymmetry is a real trap for anyone assuming multi-resource mode is a strict
+  superset of what the per-resource calls would produce. `build-transformed.yml`'s new
+  "Demonstrate multi-resource mode" step makes this directly observable in a CI log: compare
+  `publish/LegacyGateway.Framework/` (present, from the explicit `--resource` step) against
+  `publish-all/` (absent) on any Staging dispatch. Fixable per-layer, if ever wanted, by listing
+  the resource with no `patch` in the relevant Environment layer — a supported shape
+  (`ResolveResource` reports "listed with no patch, skipping") that would put it into the union.
+  Deliberately not done here, to keep this asymmetry demonstrable rather than paper over it.
+- **`--output <dir>` (multi-resource mode) can't produce `.exe.config`-style deploy naming.** It
+  mirrors each resource's own repo-root-relative source path under the output directory
+  (`publish-all/legacy/LegacyGateway.Framework/App.config`, not
+  `LegacyGateway.Framework.exe.config` next to the built exe) — it can't rename a file. For a
+  .NET Framework project's actual deploy path, per-resource `--resource ... --output <file>`
+  invocations remain necessary; `build-transformed.yml` keeps its four explicit invocations for
+  exactly this reason and treats the multi-resource step as a pure demonstration/audit tool
+  alongside them, not a replacement.
+- **Upstream release-process finding, adjacent to this migration**: `0.7.0-alpha`'s own
+  `publish.yml` run pushed packages to GitHub Packages, then failed its own gated smoke test —
+  which still invoked the removed `--manifest` flag, a script the `0.7.0-alpha` implementation
+  itself missed updating — so no GitHub Release was ever created for that tag. Corrected as
+  `0.7.0-alpha2` (script fixed, packages need no changes), which this repo is pinned to. See
+  `config-transform`'s `docs/CHANGELOG.md` `[0.7.0-alpha2]` entry and `docs/ROADMAP.md`.
+- **Still unexercised by this pilot**: `set --resource` against the new schema (nothing here has
+  ever been authored via `set`, old schema or new), and the `--list --resource` tree-wide reverse
+  lookup outside the new `build-transformed.yml` `--list` step.
 
 ## Deliberately not validated by this pilot
 
