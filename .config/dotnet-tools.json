@@ -3,7 +3,7 @@
   "isRoot": true,
   "tools": {
     "configtransform.cli": {
-      "version": "0.8.0-alpha",
+      "version": "0.11.0-alpha",
       "commands": [
         "configtransform"
       ]

@@ -185,3 +185,13 @@ job-level-scoping bug this change caught in its own first CI run.
   version delivers: both `AdminPortal.Web/Web.config` (XML) and `BillingApi.Core/appsettings.json`
   (JSON) resolve together in a single call, no per-format skip note. See `FINDINGS.md` for the
   golden-output diff against a real pre-migration baseline run.
+- **Re-pinned from `0.8.0-alpha` to `0.11.0-alpha`** — three upstream releases at once, since this
+  pilot skipped re-pinning for the middle ones: `0.9.0-alpha` (the `init` command, plus fixing
+  `--client` to be optional for a plain resolve — reported against this very pilot's published
+  tool), `0.10.0-alpha` (a duplicate re-tag of `0.9.0-alpha` with no code changes — see
+  `config-transform`'s `docs/CHANGELOG.md`/`docs/ROADMAP.md` for that drift note), and
+  `0.11.0-alpha` (a `--list`/single-resource resolution-report readability rework, also reported
+  against this pilot: the chain now prints base→arrow→layer in real application order with
+  uniform `patched in`/`not patched in` wording instead of target-layer-first `patched here`/
+  `also patched in`, and every path is repo-relative and never omitted). See `FINDINGS.md` for
+  verification against a real `build-transformed.yml` dispatch.

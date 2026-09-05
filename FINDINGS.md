@@ -278,6 +278,44 @@ invocations (four per-resource `--resource` calls plus `--list`) to the new comm
   patch file are untouched — the migration is purely which tool name `build-transformed.yml`
   invokes and how many calls the multi-resource demo step makes.
 
+## Re-pinning to `0.11.0-alpha` (skipping `0.9.0-alpha`/`0.10.0-alpha`)
+
+This pilot's `.config/dotnet-tools.json` sat on `0.8.0-alpha` through two further upstream
+releases before this re-pin: `0.9.0-alpha` (the `init` command, plus fixing `--client` to be
+optional for a plain resolve — reported against this pilot's own published tool) and
+`0.10.0-alpha` (a duplicate re-tag of `0.9.0-alpha`'s exact commit, no code changes — see
+`config-transform`'s `docs/CHANGELOG.md`/`docs/ROADMAP.md` for that drift's full writeup).
+`0.11.0-alpha` reworks `--list` and the single-resource resolution report for readability — also
+reported against this pilot, working from a real `--list`/`--dry-run`/`--diff` session against
+this exact repo's output.
+
+- **Can't verify locally.** `.configtransform/**` is git-crypt-encrypted in this pilot
+  (`.gitattributes`), and no session working on `config-transform` itself ever holds this
+  pilot's key — the same constraint noted throughout this file. Verification instead means a
+  real `build-transformed.yml` `workflow_dispatch` run, same as every prior re-pin here.
+- **Dispatched `Acme`/`Production` against the re-pinned branch** — run
+  [#23](https://github.com/taljacob2/config-transform-pilot/actions/runs/33949961438) — and read
+  the actual job log rather than assuming the pin alone was enough.
+- **`--list`'s new shape confirmed against real content, for every one of this layer's four
+  resources**: `base` first (labeled `(always applied)`), then
+  `.configtransform/Environments/Production/configtransform.json` and
+  `.configtransform/Clients/Acme/Production/configtransform.json` in that real application order,
+  connected by `↓`, each read `patched in` — column-aligned against the longest label on each
+  resource block. No more target-layer-first `patched here`/`also patched in`.
+- **The single-resource resolution report's new shape confirmed too**, for all four
+  `--resource ... --output ...` invocations (`OrderProcessor.Framework/App.config`,
+  `Web/AdminPortal.Web/Web.config`, `apps/billing/BillingApi.Core/appsettings.json`,
+  `legacy/LegacyGateway.Framework/App.config`): `Resolving '<path>'` header, a `base` entry
+  naming the resource's own path, `↓`, then each layer as a two-line entry (label line, then an
+  indented `patched in: <patch path>` detail line) — every patch path repo-relative, e.g.
+  `.configtransform/Clients/Acme/Production/patch-OrderProcessor.Framework-App.config.xml`, never
+  the OS-absolute paths the old report printed.
+- **Every other step in the same run still passed**: all four base projects built, all four
+  merges wrote valid output (the well-formedness validation step is unchanged and green), and
+  multi-resource mode (`--resource` omitted) still resolved both formats in one call with no
+  skip note — this readability rework touches only what's printed to the console, never the
+  merged file content itself, confirmed directly rather than assumed from the source diff.
+
 ## Deliberately not validated by this pilot
 
 - **Real inventory against an actual solution repo.** This pilot's three projects, their config
