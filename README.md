@@ -195,3 +195,15 @@ job-level-scoping bug this change caught in its own first CI run.
   uniform `patched in`/`not patched in` wording instead of target-layer-first `patched here`/
   `also patched in`, and every path is repo-relative and never omitted). See `FINDINGS.md` for
   verification against a real `build-transformed.yml` dispatch.
+- **Re-pinned from `0.11.0-alpha` to `0.12.0-alpha`** — three more CLI usability fixes, all
+  reported against this pilot's published tool: a trailing bare `help` after other flags now
+  short-circuits to the help page instead of throwing `Unrecognized argument: 'help'.`; every CLI
+  validation error now ends with a one-line `Try:` example (e.g. a missing `--output` suggests
+  adding it or using `--dry-run`/`--diff`); and a mistyped flag close to a real one (e.g.
+  `--otuput`) now gets `Try: did you mean --output?` instead of a generic pointer to `--help`. All
+  three are CLI-argument-parsing behavior, invisible to this pilot's own pipeline (which never
+  passes a malformed flag) — re-verified via a real `build-transformed.yml` dispatch anyway, since
+  every re-pin here is confirmed against real CI content rather than assumed from the changelog.
+  See `FINDINGS.md` for the run and for a real drift this release hit: the tag was cut before
+  `config-transform`'s own CHANGELOG-versioning PR had merged, leaving `0.12.0-alpha`'s GitHub
+  Release with an empty body even though the package itself is correct.
