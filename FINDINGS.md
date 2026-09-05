@@ -351,6 +351,34 @@ instead of a generic pointer to `--help`.
   full writeup. Noted here only because it's the reason this version's upstream release page may
   look sparse if anyone checks it; it has no bearing on this pilot's own pin, which is unaffected.
 
+## Re-pinning to `0.13.0-alpha`
+
+Three more real-user-reported fixes, again all found against this pilot's own published tool:
+`init`'s scan surfacing `.config/dotnet-tools.json`/`nuget.config` as candidate resources
+(`InitScanner` now excludes both by exact filename); omitting `--resource` treating `--output` as
+a directory used to throw a raw, OS-worded `IOException` when that path already existed as a file
+(`RunEveryResource` now fails fast with a `Try: add --resource ...` hint instead); and `--diff`
+printing git's own file-identity header lines naming meaningless OS temp file paths
+(`GitDiff.Render` now strips them).
+
+- **All three are CLI-parser/error-path/diff-rendering behavior, not merge behavior** — none of
+  them is actually exercised by anything `build-transformed.yml` does (it never passes a
+  malformed flag, never collides `--output` with an existing file, and only ever uses `--diff`
+  in the demo step where the header lines were cosmetic noise anyway). Re-verified via a real
+  dispatch regardless, same as every prior re-pin.
+- **Dispatched `Acme`/`Production` against the re-pinned branch** — run
+  [#25](https://github.com/taljacob2/config-transform-pilot/actions/runs/33964121287) — every
+  step passed: git-crypt unlock, all four project builds, all four `--resource ... --output ...`
+  resolves, well-formedness validation, `--list`, and multi-resource mode (`--resource` omitted).
+  Nothing regressed.
+- **This tag went out clean, unlike `0.12.0-alpha`**: `config-transform`'s owner cut a
+  CHANGELOG-versioning PR *before* tagging this time (`config-transform#23`), so
+  `0.13.0-alpha`'s tag landed on a commit that already had the `## [0.13.0-alpha]` CHANGELOG
+  section — `publish.yml` ran fully green and
+  [the GitHub Release](https://github.com/taljacob2/config-transform/releases/tag/0.13.0-alpha)
+  has real, complete notes, no manual patching needed. The drift documented for `0.12.0-alpha`
+  above was a one-time process gap, not a recurring issue.
+
 ## Deliberately not validated by this pilot
 
 - **Real inventory against an actual solution repo.** This pilot's three projects, their config
