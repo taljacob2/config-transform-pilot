@@ -316,6 +316,41 @@ this exact repo's output.
   skip note — this readability rework touches only what's printed to the console, never the
   merged file content itself, confirmed directly rather than assumed from the source diff.
 
+## Re-pinning to `0.12.0-alpha`
+
+Three more CLI usability fixes, all reported against this pilot's published tool during the same
+session as `0.11.0-alpha` above: a trailing bare `help` after other flags (e.g. `configtransform
+-e Production -r App.config help`) used to throw `Unrecognized argument: 'help'.` instead of
+short-circuiting to the help page, even though `--help`/`-h` already worked from any position;
+every CLI validation error now ends with a one-line `Try:` example specific to that mistake
+(e.g. missing `--output` on a real run suggests adding it or using `--dry-run`/`--diff`); and an
+unrecognized flag close to a known one (edit distance ≤2) now gets `Try: did you mean --output?`
+instead of a generic pointer to `--help`.
+
+- **All three are CLI-argument-parsing behavior, not merge behavior** — this pilot's
+  `build-transformed.yml` never passes a malformed flag, so none of the three is actually
+  exercised by anything this pipeline does. Re-verified anyway via a real dispatch, consistent
+  with every other re-pin here: confirmed against real CI content, not assumed from the
+  changelog.
+- **Dispatched `Acme`/`Production` against the re-pinned branch** — run
+  [#24](https://github.com/taljacob2/config-transform-pilot/actions/runs/33951858377) — every
+  step passed: git-crypt unlock, all four project builds, all four `--resource ... --output ...`
+  resolves, well-formedness validation, `--list`, and multi-resource mode (`--resource` omitted).
+  Nothing regressed.
+- **A real drift this release hit, unrelated to anything this pilot does**: `config-transform`'s
+  owner pushed the `0.12.0-alpha` tag against the commit merging the three fixes above, but
+  *before* the follow-up PR moving `docs/CHANGELOG.md`'s `[Unreleased]` content into a versioned
+  `0.12.0-alpha` section had itself merged. `publish.yml` still ran fully green — build, test,
+  pack, push to GitHub Packages, and the install-and-run smoke test all succeeded, so the package
+  this pilot now pins is real and correct — but `scripts/extract-changelog-section.sh` found no
+  `## [0.12.0-alpha]` heading yet at the tagged commit, so
+  [the GitHub Release](https://github.com/taljacob2/config-transform/releases/tag/0.12.0-alpha)
+  it created has an empty body. Packages can't be un-published, so `config-transform`'s owner is
+  backfilling the CHANGELOG/ROADMAP with a drift note and pasting the release notes in manually
+  rather than re-tagging — see that repo's `docs/CHANGELOG.md` `[0.12.0-alpha]` entry for the
+  full writeup. Noted here only because it's the reason this version's upstream release page may
+  look sparse if anyone checks it; it has no bearing on this pilot's own pin, which is unaffected.
+
 ## Deliberately not validated by this pilot
 
 - **Real inventory against an actual solution repo.** This pilot's three projects, their config
