@@ -207,3 +207,10 @@ job-level-scoping bug this change caught in its own first CI run.
   See `FINDINGS.md` for the run and for a real drift this release hit: the tag was cut before
   `config-transform`'s own CHANGELOG-versioning PR had merged, leaving `0.12.0-alpha`'s GitHub
   Release with an empty body even though the package itself is correct.
+- **Re-pinned from `0.12.0-alpha` to `0.13.0-alpha`** — three more real-user-reported fixes:
+  `init`'s scan no longer suggests `.config/dotnet-tools.json`/`nuget.config` as candidate
+  resources; omitting `--resource` with `--output` colliding against an existing file now fails
+  fast with a clear `Try:` hint instead of a raw `IOException`; and `--diff` no longer prints
+  git's own file-identity header lines naming meaningless OS temp file paths. Re-verified via a
+  real `build-transformed.yml` dispatch — see `FINDINGS.md`, which also notes this tag went out
+  clean (real, complete GitHub Release notes), unlike `0.12.0-alpha`'s drift above.
