@@ -214,3 +214,7 @@ job-level-scoping bug this change caught in its own first CI run.
   git's own file-identity header lines naming meaningless OS temp file paths. Re-verified via a
   real `build-transformed.yml` dispatch — see `FINDINGS.md`, which also notes this tag went out
   clean (real, complete GitHub Release notes), unlike `0.12.0-alpha`'s drift above.
+
+## License
+
+[Apache License 2.0](LICENSE).
