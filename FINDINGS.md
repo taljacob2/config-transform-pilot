@@ -428,9 +428,57 @@ never built or run in CI) with a real `.env` file. Every prior project, even net
   files (`services/notifications/NotificationWorker/`, outside that tree) stayed unencrypted, as
   designed.
 
+## Re-pinning to `0.16.0-alpha`: adding YAML support
+
+`config-transform` added a fourth `FormatEngine` (`ConfigTransform.Yaml`), reusing JSON's
+flatten-and-merge *architecture* (`Microsoft.Extensions.Configuration`) via
+`NetEscapades.Configuration.Yaml`/`YamlDotNet`, registered alongside XML, JSON, and `.env` with
+zero orchestration changes needed — the dispatcher generalizing to a fourth engine, not just
+three (`config-transform#29`). This pilot exercises it with a sixth project, `ReportingService`
+(`services/reporting/ReportingService/`) — a Python-style service (`requirements.txt` + a stub
+`main.py`, never built or run in CI) with a real `config.yaml` file. Unlike `.env`'s flat
+`KEY=VALUE` shape, `config.yaml` has a nested `Reporting:` map, so this is the first genuine test
+of YAML's real merge semantics (nested-key override), not just another flat-file format; it's
+also the first project after `NotificationWorker` to prove no *ecosystem* coupling beyond .NET —
+a third language (Python) after C#/.NET Framework/.NET Core and Node.js.
+
+- **YAML patched at `Environments/Production`, `Environments/Staging`, and
+  `Clients/Acme/Production`** — deliberately partial, the same "missing overlay ≠ error" story
+  every other project already tells. `build-transformed.yml` gained a resolve step, a
+  `PyYAML`-based validation check (`yaml.safe_load` on the merged output), and a `cat` step,
+  mirroring the other five projects'.
+- **Dispatched `Acme`/`Production` against the re-pinned tool** — run
+  [#27](https://github.com/taljacob2/config-transform-pilot/actions/runs/34148833587) — every
+  step passed, and the merged `config.yaml` content is exactly right:
+  ```yaml
+  LogLevel: warn                  # from Environments/Production
+  Reporting:
+    Enabled: true                 # from Environments/Production
+    Schedule: '*/15 * * * *'      # from Clients/Acme/Production (base's "0 * * * *" overridden)
+  ```
+  `--list` shows the full base→Environment→Client chain for
+  `services/reporting/ReportingService/config.yaml` correctly, and multi-resource mode
+  (`--resource` omitted) wrote all six resources in one call — `ReportingService/config.yaml`
+  alongside the other five projects' config files, no stderr skip note, confirming the dispatcher
+  genuinely treats YAML as a first-class registered format, not a bolt-on.
+- **A real, previously-undocumented drift caught and fixed in the same change, not by the tool
+  but by re-reading this pilot's own comments**: `build-transformed.yml`'s multi-resource-mode
+  step comment claimed `NotificationWorker/.env` is "absent for any client other than
+  Acme/Production" — false. It's listed in *both* Environment layers (`Production` and
+  `Staging`), so it resolves for every client/environment combination, base-only where no client
+  layer overrides it, exactly like the newly-added `ReportingService/config.yaml`. Corrected in
+  the same commit that touched this comment block for the new project, per this repo's own
+  convention of fixing drift noticed in passing rather than leaving it for a future session.
+- **No new git-crypt exercise needed this round**: the same locally-unlocked `.configtransform/**`
+  tree from the `.env` round was still unlocked in this session; `git-crypt status -e` confirmed
+  the three new patch files (`services/reporting/ReportingService/config.yaml`'s Environment ×2
+  and Client ×1 overlays) registered as `encrypted`, and the staged git blob content was verified
+  as opaque ciphertext (`file` reports `data`, not readable YAML) before committing — the same
+  safety check this repo's `SECRETS.md` calls for, just re-run rather than newly discovered.
+
 ## Deliberately not validated by this pilot
 
-- **Real inventory against an actual solution repo.** This pilot's five projects, their config
+- **Real inventory against an actual solution repo.** This pilot's six projects, their config
   shapes, and the simulated client/environment matrix are all invented for coverage, not drawn
   from a real codebase. `CONFIG_MANAGEMENT.md` §11's "no real inventory has been done" item is
   *not* closed by this pilot — only a real pilot (necessarily in a separate session, against the
@@ -442,9 +490,11 @@ never built or run in CI) with a real `.env` file. Every prior project, even net
 - **git-crypt key rotation** — never exercised; the same key has been in place since `init`.
 - **Per-client git-crypt key splitting** — not attempted; a single shared key covers all three
   simulated clients here.
-- **YAML format support** — no fixtures exist in this pilot; still purely a design-doc claim,
-  unexercised. (`.env` support has since been validated — see "Re-pinning to `0.15.0-alpha`"
-  above.)
+- **`set`'s YAML array-of-objects matching** — `config-transform` itself doesn't implement this
+  yet (deliberately deferred, see its own `docs/FIELD_AUTHORING_DESIGN.md`), so there's nothing
+  for this pilot to exercise; `ReportingService/config.yaml` only ever needed `set`'s plain-field
+  path, which isn't exercised by this pilot at all (every overlay here is hand-authored, not
+  `set`-authored, the same as every other project/format).
 - **`launchSettings.json`/`dotnet user-secrets` accidental-secret check** — not applicable; this
   pilot has no real secrets to accidentally expose.
 
@@ -453,7 +503,7 @@ never built or run in CI) with a real `.env` file. Every prior project, even net
 The core claims in `CONFIG_MANAGEMENT.md` and `CONFIGTRANSFORM_TOOL_DESIGN.md` — layered
 resolution order, no-`src/`-assumption, format-genericness, missing-overlay-is-not-an-error,
 git-crypt-at-rest, the two-workflow CI split — all held up under a real (if synthetic) exercise
-across four formats (XML, JSON, `.env`, and the varying-nesting/varying-`TargetFramework`/
+across four formats (XML, JSON, `.env`, YAML, and the varying-nesting/varying-`TargetFramework`/
 varying-ecosystem project shapes each lives in) and varying repo shapes, and the exercise paid
 for itself by catching a real correctness bug the tool's own test suite structurally could not
 have caught. What remains open is specifically the parts that require a *real* repo's real
