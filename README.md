@@ -27,13 +27,16 @@ pilot has to happen in a separate, employer-owned session instead.
 | `AdminPortal.Web` | `Web.config` | `Web/AdminPortal.Web/` (nested once) | net48 |
 | `BillingApi.Core` | `appsettings.json` | `apps/billing/BillingApi.Core/` (nested twice) | net8.0 |
 | `LegacyGateway.Framework` | `App.config` | `legacy/LegacyGateway.Framework/` | net35 — proves the tool has no `TargetFramework` coupling |
+| `NotificationWorker` | `.env` | `services/notifications/NotificationWorker/` (nested three deep) | Node.js — the only non-.NET project here, proving the tool has no *ecosystem* coupling at all, not just no `TargetFramework` coupling |
 
 None of these are realistic, fully-featured applications — `AdminPortal.Web` in particular is
 a plain class library standing in for an ASP.NET-hosted web app (no `System.Web`/IIS hosting
-involved), since actually hosting it adds build complexity this pilot doesn't need. What matters
-for the pilot is the *shape* of each config file (`appSettings`, `connectionStrings`,
-`system.web`/`system.webServer` for XML; nested JSON objects and arrays for JSON) and the
-project's location in the repo tree — not that the app itself does anything real.
+involved), since actually hosting it adds build complexity this pilot doesn't need, and
+`NotificationWorker` is a `package.json`/stub-`index.js` pair never actually run by CI — nothing
+here builds or executes a real Node.js process. What matters for the pilot is the *shape* of each
+config file (`appSettings`, `connectionStrings`, `system.web`/`system.webServer` for XML; nested
+JSON objects and arrays for JSON; flat `KEY=VALUE` pairs for `.env`) and the project's location
+in the repo tree — not that the app itself does anything real.
 
 ## Simulated clients and environments
 
@@ -52,11 +55,11 @@ plaintext rendering of the layout is the map:
 ```
 .configtransform/
 ├── Environments/
-│   ├── Production/    -- all 4 projects
-│   └── Staging/        -- OrderProcessor, AdminPortal, BillingApi (not LegacyGateway)
+│   ├── Production/    -- all 5 projects
+│   └── Staging/        -- OrderProcessor, AdminPortal, BillingApi, NotificationWorker (not LegacyGateway)
 └── Clients/
     ├── Acme/
-    │   ├── Production/  -- all 4 projects (extends Environments/Production)
+    │   ├── Production/  -- all 5 projects (extends Environments/Production)
     │   └── Staging/       -- OrderProcessor, BillingApi (extends Environments/Staging)
     ├── Globex/
     │   ├── Production/  -- OrderProcessor, AdminPortal, BillingApi (extends Environments/Production)
@@ -214,6 +217,21 @@ job-level-scoping bug this change caught in its own first CI run.
   git's own file-identity header lines naming meaningless OS temp file paths. Re-verified via a
   real `build-transformed.yml` dispatch — see `FINDINGS.md`, which also notes this tag went out
   clean (real, complete GitHub Release notes), unlike `0.12.0-alpha`'s drift above.
+- **Added a fifth project, `NotificationWorker`** (`.env`, Node.js,
+  `services/notifications/NotificationWorker/`) — `config-transform`'s `0.15.0-alpha` adds a third `FormatEngine`
+  (`ConfigTransform.Env`) for flat `KEY=VALUE` files; this is the pilot's exercise of it, and
+  deliberately the first non-.NET project here, since every prior project (even net35
+  `LegacyGateway.Framework`) was still a `.csproj`. `.env` files patched at
+  `Environments/Production`, `Environments/Staging`, and `Clients/Acme/Production` (partial
+  coverage, same "missing overlay ≠ error" story as every other project) —
+  `.github/workflows/build-transformed.yml` gained a resolve step, a grammar-level validation
+  check (every merged line is `KEY=value`), and a `cat` step, mirroring the existing four
+  projects'. **Re-pinned to `0.15.0-alpha` and verified against a real dispatch**: run
+  [#26](https://github.com/taljacob2/config-transform-pilot/actions/runs/34094057751) for
+  `Acme`/`Production` resolved `NotificationWorker/.env` correctly — `QUEUE_URL`/`LOG_LEVEL` from
+  the Environment overlay, `RETRY_COUNT` untouched from base, `FEATURE_DIGEST_EMAILS=true` from
+  the Client overlay — and multi-resource mode wrote all five resources in one call, no stderr
+  skip note. See `FINDINGS.md`'s "Re-pinning to `0.15.0-alpha`" section for the full writeup.
 
 ## License
 

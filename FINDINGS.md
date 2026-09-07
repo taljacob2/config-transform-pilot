@@ -379,9 +379,58 @@ printing git's own file-identity header lines naming meaningless OS temp file pa
   has real, complete notes, no manual patching needed. The drift documented for `0.12.0-alpha`
   above was a one-time process gap, not a recurring issue.
 
+## Re-pinning to `0.15.0-alpha`: adding `.env` support
+
+`config-transform` added a third `FormatEngine` (`ConfigTransform.Env`), a dependency-free flat
+`KEY=VALUE` merge engine, registered in `ConfigTransform.Cli`'s `FormatEngineRegistry` alongside
+XML and JSON with zero orchestration changes needed — the real proof the dispatcher generalizes
+past two engines, not just a claim (`config-transform#27`). This pilot exercises it with a fifth
+project, `NotificationWorker` (`services/notifications/NotificationWorker/`) — deliberately the
+**first non-.NET project here**: a Node.js-style service (`package.json` + a stub `index.js`,
+never built or run in CI) with a real `.env` file. Every prior project, even net35
+`LegacyGateway.Framework`, was still a `.csproj`; this is the first genuine test of "no
+*ecosystem* coupling," not just "no `TargetFramework` coupling."
+
+- **`.env` patched at `Environments/Production`, `Environments/Staging`, and
+  `Clients/Acme/Production`** — deliberately partial, the same "missing overlay ≠ error" story
+  every other project already tells. `build-transformed.yml` gained a resolve step, a
+  grammar-level validation check (every merged line is `KEY=value`), and a `cat` step, mirroring
+  the other four projects'.
+- **Dispatched `Acme`/`Production` against the re-pinned tool** — run
+  [#26](https://github.com/taljacob2/config-transform-pilot/actions/runs/34094057751) — every
+  step passed, and the merged `.env` content is exactly right:
+  ```
+  QUEUE_URL=amqp://prod-queue.internal:5672/notifications   # from Environments/Production
+  LOG_LEVEL=warn                                             # from Environments/Production
+  RETRY_COUNT=3                                              # untouched from base
+  FEATURE_DIGEST_EMAILS=true                                 # from Clients/Acme/Production
+  ```
+  `--list` shows the full base→Environment→Client chain for
+  `services/notifications/NotificationWorker/.env` correctly, and multi-resource mode
+  (`--resource` omitted) wrote all five resources in one call — `NotificationWorker/.env`
+  alongside the four .NET projects' config files, no stderr skip note, confirming the dispatcher
+  genuinely treats `.env` as a first-class registered format, not a bolt-on.
+- **A real, non-obvious sequencing issue caught along the way, not by the tool but by this
+  pilot's own process**: `build-transformed.yml`'s new "Resolve `NotificationWorker/.env`" step
+  was added and merge-ready *before* `.config/dotnet-tools.json` was re-pinned past
+  `0.14.0-alpha` (which has no `.env` engine at all) — landing that PR as-is would have broken
+  every future manual dispatch, for every client/environment, until the re-pin caught up. Caught
+  before merging, not after: the PR stayed a draft "checkpoint" (explicitly labeled as such,
+  with an unchecked test-plan item) until `0.15.0-alpha` was tagged, `publish.yml` succeeded, the
+  re-pin landed in the same PR, and the dispatch above actually ran green.
+- **git-crypt genuinely exercised end to end this round, not just referenced**: this session
+  received the repo's real `git-crypt` key (out-of-band, per this repo's own `SECRETS.md`
+  guidance) to unlock `.configtransform/**` locally and author `NotificationWorker`'s layer
+  entries and patch files — the first time a *local* (non-CI) session in this pilot's history has
+  actually decrypted and hand-edited the tree, rather than only ever seeing it via CI's own
+  `Unlock git-crypt` step. `git-crypt status` confirmed every new/changed file under
+  `.configtransform/**` re-encrypted correctly on commit, and the new project's own plain source
+  files (`services/notifications/NotificationWorker/`, outside that tree) stayed unencrypted, as
+  designed.
+
 ## Deliberately not validated by this pilot
 
-- **Real inventory against an actual solution repo.** This pilot's three projects, their config
+- **Real inventory against an actual solution repo.** This pilot's five projects, their config
   shapes, and the simulated client/environment matrix are all invented for coverage, not drawn
   from a real codebase. `CONFIG_MANAGEMENT.md` §11's "no real inventory has been done" item is
   *not* closed by this pilot — only a real pilot (necessarily in a separate session, against the
@@ -393,8 +442,9 @@ printing git's own file-identity header lines naming meaningless OS temp file pa
 - **git-crypt key rotation** — never exercised; the same key has been in place since `init`.
 - **Per-client git-crypt key splitting** — not attempted; a single shared key covers all three
   simulated clients here.
-- **YAML/`.env` format support** — no fixtures of either format exist in this pilot; still
-  purely a design-doc claim, unexercised.
+- **YAML format support** — no fixtures exist in this pilot; still purely a design-doc claim,
+  unexercised. (`.env` support has since been validated — see "Re-pinning to `0.15.0-alpha`"
+  above.)
 - **`launchSettings.json`/`dotnet user-secrets` accidental-secret check** — not applicable; this
   pilot has no real secrets to accidentally expose.
 
@@ -403,7 +453,9 @@ printing git's own file-identity header lines naming meaningless OS temp file pa
 The core claims in `CONFIG_MANAGEMENT.md` and `CONFIGTRANSFORM_TOOL_DESIGN.md` — layered
 resolution order, no-`src/`-assumption, format-genericness, missing-overlay-is-not-an-error,
 git-crypt-at-rest, the two-workflow CI split — all held up under a real (if synthetic) exercise
-across three formats and varying repo shapes, and the exercise paid for itself by catching a
-real correctness bug the tool's own test suite structurally could not have caught. What remains
-open is specifically the parts that require a *real* repo's real content and real deployment
-targets, which this synthetic pilot was never going to be able to validate by design.
+across four formats (XML, JSON, `.env`, and the varying-nesting/varying-`TargetFramework`/
+varying-ecosystem project shapes each lives in) and varying repo shapes, and the exercise paid
+for itself by catching a real correctness bug the tool's own test suite structurally could not
+have caught. What remains open is specifically the parts that require a *real* repo's real
+content and real deployment targets, which this synthetic pilot was never going to be able to
+validate by design.
