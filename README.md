@@ -226,11 +226,12 @@ job-level-scoping bug this change caught in its own first CI run.
   coverage, same "missing overlay ≠ error" story as every other project) —
   `.github/workflows/build-transformed.yml` gained a resolve step, a grammar-level validation
   check (every merged line is `KEY=value`), and a `cat` step, mirroring the existing four
-  projects'. **Not yet verified against a real dispatch or re-pinned**: this repo's
-  `.config/dotnet-tools.json` still pins `configtransform.cli` at `0.14.0-alpha`, which has no
-  `.env` support at all — the re-pin to `0.15.0-alpha` and the real CI verification both wait on
-  that tag actually being pushed and `publish.yml` succeeding (`config-transform`'s own
-  `docs/ROADMAP.md` tracks that). See `FINDINGS.md` once that verification lands.
+  projects'. **Re-pinned to `0.15.0-alpha` and verified against a real dispatch**: run
+  [#26](https://github.com/taljacob2/config-transform-pilot/actions/runs/34094057751) for
+  `Acme`/`Production` resolved `NotificationWorker/.env` correctly — `QUEUE_URL`/`LOG_LEVEL` from
+  the Environment overlay, `RETRY_COUNT` untouched from base, `FEATURE_DIGEST_EMAILS=true` from
+  the Client overlay — and multi-resource mode wrote all five resources in one call, no stderr
+  skip note. See `FINDINGS.md`'s "Re-pinning to `0.15.0-alpha`" section for the full writeup.
 
 ## License
 
