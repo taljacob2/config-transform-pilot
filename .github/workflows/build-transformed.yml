@@ -4,13 +4,20 @@ on:
   workflow_dispatch:
     inputs:
       client:
-        description: "Client name (Acme, Globex, Initech)"
+        description: "Client name"
         required: true
-        type: string
+        type: choice
+        options:
+          - Acme
+          - Globex
+          - Initech
       environment:
-        description: "Environment name (Staging, Production)"
+        description: "Environment name"
         required: true
-        type: string
+        type: choice
+        options:
+          - Staging
+          - Production
 
 jobs:
   transform:
