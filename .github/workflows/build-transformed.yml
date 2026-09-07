@@ -83,12 +83,25 @@ jobs:
             --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
             --output publish/LegacyGateway.Framework/LegacyGateway.Framework.exe.config
 
+      - name: Resolve services/notifications/NotificationWorker/.env (Node.js project -- proves the tool has no .NET/ecosystem coupling at all, not just no TargetFramework coupling)
+        run: |
+          mkdir -p publish/NotificationWorker
+          dotnet tool run configtransform -- \
+            --resource services/notifications/NotificationWorker/.env \
+            --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
+            --output publish/NotificationWorker/.env
+
       - name: Validate merged output is well-formed
         run: |
           python3 -c "import xml.etree.ElementTree as ET; ET.parse(open('publish/OrderProcessor.Framework/OrderProcessor.Framework.exe.config', encoding='utf-8-sig'))"
           python3 -c "import xml.etree.ElementTree as ET; ET.parse(open('publish/AdminPortal.Web/Web.config', encoding='utf-8-sig'))"
           python3 -c "import json; json.load(open('publish/BillingApi.Core/appsettings.json'))"
           python3 -c "import xml.etree.ElementTree as ET; ET.parse(open('publish/LegacyGateway.Framework/LegacyGateway.Framework.exe.config', encoding='utf-8-sig'))"
+          python3 -c "
+          for line in open('publish/NotificationWorker/.env'):
+              line = line.strip()
+              assert line and '=' in line, f'malformed .env line: {line!r}'
+          "
 
       - name: Show resolved config (this pilot has no real secrets, so this is safe)
         run: |
@@ -104,6 +117,9 @@ jobs:
           echo "::group::LegacyGateway.Framework/App.config (net35)"
           cat publish/LegacyGateway.Framework/LegacyGateway.Framework.exe.config
           echo "::endgroup::"
+          echo "::group::NotificationWorker/.env (Node.js)"
+          cat publish/NotificationWorker/.env
+          echo "::endgroup::"
 
       - name: Show the resolved layer chain (--list)
         run: |
@@ -114,12 +130,14 @@ jobs:
         # Not the deploy path -- .NET Framework needs <AssemblyName>.exe.config next to the exe,
         # and this mode mirrors each resource's own repo-root-relative path under --output instead.
         # Kept as a real exercise of the unified CLI's headline capability (config-transform
-        # 0.8.0-alpha): one call, both the XML and the JSON resource this layer touches, resolved
-        # together -- no per-format invocation, no stderr skip note (see FINDINGS.md's "Migrating
-        # to the unified CLI" section). Its output also makes a real property visible: it emits
-        # only what the resolved layer CHAIN lists, so legacy/LegacyGateway.Framework/App.config
-        # is absent for every Staging dispatch (no layer in the Staging chain names it) while the
-        # explicit --resource step above still resolves it to base-only.
+        # 0.8.0-alpha): one call resolves every resource the layer touches -- XML, JSON, and
+        # (since 0.15.0-alpha) .env together, no per-format invocation, no stderr skip note (see
+        # FINDINGS.md's "Migrating to the unified CLI" section). Its output also makes a real
+        # property visible: it emits only what the resolved layer CHAIN lists, so
+        # legacy/LegacyGateway.Framework/App.config is absent for every Staging dispatch (no layer
+        # in the Staging chain names it) while the explicit --resource step above still resolves
+        # it to base-only; services/notifications/NotificationWorker/.env is similarly absent for
+        # any client other than Acme/Production, since no other layer lists it either.
         run: |
           dotnet tool run configtransform -- \
             --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
@@ -135,4 +153,5 @@ jobs:
             publish/AdminPortal.Web/Web.config
             publish/BillingApi.Core/appsettings.json
             publish/LegacyGateway.Framework/LegacyGateway.Framework.exe.config
+            publish/NotificationWorker/.env
             publish-all/**

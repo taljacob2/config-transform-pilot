@@ -1,0 +1,7 @@
+{
+  "name": "notification-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Synthetic Node.js service used only to give this pilot a real, non-.NET .env resource -- see config-transform's CLAUDE.md \"no coupling to any language, ecosystem\" claim. Not a real, fully-featured application; nothing here is built or run in CI.",
+  "main": "index.js"
+}
