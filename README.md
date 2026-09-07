@@ -27,16 +27,19 @@ pilot has to happen in a separate, employer-owned session instead.
 | `AdminPortal.Web` | `Web.config` | `Web/AdminPortal.Web/` (nested once) | net48 |
 | `BillingApi.Core` | `appsettings.json` | `apps/billing/BillingApi.Core/` (nested twice) | net8.0 |
 | `LegacyGateway.Framework` | `App.config` | `legacy/LegacyGateway.Framework/` | net35 — proves the tool has no `TargetFramework` coupling |
-| `NotificationWorker` | `.env` | `services/notifications/NotificationWorker/` (nested three deep) | Node.js — the only non-.NET project here, proving the tool has no *ecosystem* coupling at all, not just no `TargetFramework` coupling |
+| `NotificationWorker` | `.env` | `services/notifications/NotificationWorker/` (nested three deep) | Node.js — the first non-.NET project here, proving the tool has no *ecosystem* coupling at all, not just no `TargetFramework` coupling |
+| `ReportingService` | `config.yaml` | `services/reporting/ReportingService/` (nested three deep) | Python — a third ecosystem after .NET and Node.js, reinforcing the same no-coupling claim |
 
 None of these are realistic, fully-featured applications — `AdminPortal.Web` in particular is
 a plain class library standing in for an ASP.NET-hosted web app (no `System.Web`/IIS hosting
-involved), since actually hosting it adds build complexity this pilot doesn't need, and
-`NotificationWorker` is a `package.json`/stub-`index.js` pair never actually run by CI — nothing
-here builds or executes a real Node.js process. What matters for the pilot is the *shape* of each
-config file (`appSettings`, `connectionStrings`, `system.web`/`system.webServer` for XML; nested
-JSON objects and arrays for JSON; flat `KEY=VALUE` pairs for `.env`) and the project's location
-in the repo tree — not that the app itself does anything real.
+involved), since actually hosting it adds build complexity this pilot doesn't need,
+`NotificationWorker` is a `package.json`/stub-`index.js` pair never actually run by CI, and
+`ReportingService` is a `requirements.txt`/stub-`main.py` pair, also never run by CI — nothing
+here builds or executes a real Node.js or Python process. What matters for the pilot is the
+*shape* of each config file (`appSettings`, `connectionStrings`, `system.web`/`system.webServer`
+for XML; nested JSON objects and arrays for JSON; flat `KEY=VALUE` pairs for `.env`; nested maps
+for YAML) and the project's location in the repo tree — not that the app itself does anything
+real.
 
 ## Simulated clients and environments
 
@@ -55,11 +58,11 @@ plaintext rendering of the layout is the map:
 ```
 .configtransform/
 ├── Environments/
-│   ├── Production/    -- all 5 projects
-│   └── Staging/        -- OrderProcessor, AdminPortal, BillingApi, NotificationWorker (not LegacyGateway)
+│   ├── Production/    -- all 6 projects
+│   └── Staging/        -- OrderProcessor, AdminPortal, BillingApi, NotificationWorker, ReportingService (not LegacyGateway)
 └── Clients/
     ├── Acme/
-    │   ├── Production/  -- all 5 projects (extends Environments/Production)
+    │   ├── Production/  -- all 6 projects (extends Environments/Production)
     │   └── Staging/       -- OrderProcessor, BillingApi (extends Environments/Staging)
     ├── Globex/
     │   ├── Production/  -- OrderProcessor, AdminPortal, BillingApi (extends Environments/Production)
@@ -72,7 +75,10 @@ plaintext rendering of the layout is the map:
 `LegacyGateway.Framework` is deliberately patched only at `Environments/Production` and
 `Clients/Acme/Production` — every other client/environment combination resolves it to base-only,
 and no layer in any Staging chain lists it at all (see the multi-resource-mode finding in
-`FINDINGS.md`).
+`FINDINGS.md`). `NotificationWorker`/`.env` and `ReportingService`/`config.yaml` are each listed
+in *both* Environment layers (unlike `LegacyGateway.Framework`), so both resolve for every
+client/environment combination — base-only except at `Clients/Acme/Production`, the only client
+layer that overrides either of them.
 
 ## Setup
 
@@ -232,6 +238,17 @@ job-level-scoping bug this change caught in its own first CI run.
   the Environment overlay, `RETRY_COUNT` untouched from base, `FEATURE_DIGEST_EMAILS=true` from
   the Client overlay — and multi-resource mode wrote all five resources in one call, no stderr
   skip note. See `FINDINGS.md`'s "Re-pinning to `0.15.0-alpha`" section for the full writeup.
+- **Added a sixth project, `ReportingService`** (`config.yaml`, Python,
+  `services/reporting/ReportingService/`) — `config-transform`'s `0.16.0-alpha` adds a fourth
+  `FormatEngine` (`ConfigTransform.Yaml`) for nested YAML files; this is the pilot's exercise of
+  it, and the first project here to prove no *ecosystem* coupling beyond .NET/Node.js (a third
+  language, Python). Unlike `.env`'s flat `KEY=VALUE` shape, `config.yaml` has a nested `Reporting:`
+  map, exercising YAML's real merge semantics (nested-key override, not just top-level). Patched
+  at `Environments/Production`, `Environments/Staging`, and `Clients/Acme/Production` — same
+  partial-coverage shape as `NotificationWorker`. `.github/workflows/build-transformed.yml`
+  gained a resolve step, a `PyYAML`-based validation check, and a `cat` step, mirroring the
+  existing five projects'. **Re-pinned to `0.16.0-alpha` and verified against a real dispatch**:
+  see `FINDINGS.md`'s "Re-pinning to `0.16.0-alpha`" section for the run link and full writeup.
 
 ## License
 

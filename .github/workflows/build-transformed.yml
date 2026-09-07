@@ -98,6 +98,17 @@ jobs:
             --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
             --output publish/NotificationWorker/.env
 
+      - name: Resolve services/reporting/ReportingService/config.yaml (Python project -- a third ecosystem, proving the tool's no-coupling claim isn't specific to .NET or Node.js)
+        run: |
+          mkdir -p publish/ReportingService
+          dotnet tool run configtransform -- \
+            --resource services/reporting/ReportingService/config.yaml \
+            --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
+            --output publish/ReportingService/config.yaml
+
+      - name: Install PyYAML (for the YAML validation step below only -- ReportingService itself is never built or run)
+        run: pip install --quiet pyyaml
+
       - name: Validate merged output is well-formed
         run: |
           python3 -c "import xml.etree.ElementTree as ET; ET.parse(open('publish/OrderProcessor.Framework/OrderProcessor.Framework.exe.config', encoding='utf-8-sig'))"
@@ -109,6 +120,7 @@ jobs:
               line = line.strip()
               assert line and '=' in line, f'malformed .env line: {line!r}'
           "
+          python3 -c "import yaml; yaml.safe_load(open('publish/ReportingService/config.yaml'))"
 
       - name: Show resolved config (this pilot has no real secrets, so this is safe)
         run: |
@@ -127,6 +139,9 @@ jobs:
           echo "::group::NotificationWorker/.env (Node.js)"
           cat publish/NotificationWorker/.env
           echo "::endgroup::"
+          echo "::group::ReportingService/config.yaml (Python)"
+          cat publish/ReportingService/config.yaml
+          echo "::endgroup::"
 
       - name: Show the resolved layer chain (--list)
         run: |
@@ -137,14 +152,17 @@ jobs:
         # Not the deploy path -- .NET Framework needs <AssemblyName>.exe.config next to the exe,
         # and this mode mirrors each resource's own repo-root-relative path under --output instead.
         # Kept as a real exercise of the unified CLI's headline capability (config-transform
-        # 0.8.0-alpha): one call resolves every resource the layer touches -- XML, JSON, and
-        # (since 0.15.0-alpha) .env together, no per-format invocation, no stderr skip note (see
-        # FINDINGS.md's "Migrating to the unified CLI" section). Its output also makes a real
-        # property visible: it emits only what the resolved layer CHAIN lists, so
-        # legacy/LegacyGateway.Framework/App.config is absent for every Staging dispatch (no layer
-        # in the Staging chain names it) while the explicit --resource step above still resolves
-        # it to base-only; services/notifications/NotificationWorker/.env is similarly absent for
-        # any client other than Acme/Production, since no other layer lists it either.
+        # 0.8.0-alpha): one call resolves every resource the layer touches -- XML, JSON, .env
+        # (since 0.15.0-alpha), and YAML (since 0.16.0-alpha) together, no per-format invocation,
+        # no stderr skip note (see FINDINGS.md's "Migrating to the unified CLI" section). Its
+        # output also makes a real property visible: it emits only what the resolved layer CHAIN
+        # lists, so legacy/LegacyGateway.Framework/App.config is absent for every Staging dispatch
+        # (no layer in the Staging chain names it) while the explicit --resource step above still
+        # resolves it to base-only. services/notifications/NotificationWorker/.env and
+        # services/reporting/ReportingService/config.yaml are each listed in BOTH Environment
+        # layers (Production and Staging), so both are present for every client/environment
+        # combination -- base-only where no client layer overrides them, patched where one does
+        # (Acme/Production for both, as of this repo's newest project).
         run: |
           dotnet tool run configtransform -- \
             --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
@@ -161,4 +179,5 @@ jobs:
             publish/BillingApi.Core/appsettings.json
             publish/LegacyGateway.Framework/LegacyGateway.Framework.exe.config
             publish/NotificationWorker/.env
+            publish/ReportingService/config.yaml
             publish-all/**
