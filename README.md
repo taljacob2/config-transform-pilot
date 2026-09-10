@@ -46,7 +46,11 @@ real.
 Three clients (`Acme`, `Globex`, `Initech`) × two environments (`Staging`, `Production`), with
 deliberately partial overlay coverage — not every client overrides every setting, and not
 every project has overlays for every client, to prove that "missing overlay ≠ error" holds in
-practice, not just in `config-transform`'s own unit tests.
+practice, not just in `config-transform`'s own unit tests. A third, optional axis — `Hosts`, for
+one specific load-balanced server within a client/environment — exists only under
+`Clients/Acme/Production` today (two hosts, `10.0.1.11`/`10.0.1.12`), simulating a Production
+web tier behind a load balancer where each box talks to its own cache node
+(`config-transform`'s `docs/HOST_LAYER_DESIGN.md`, `0.19.0-alpha`).
 
 ## Overlay tree
 
@@ -63,6 +67,9 @@ plaintext rendering of the layout is the map:
 └── Clients/
     ├── Acme/
     │   ├── Production/  -- all 6 projects (extends Environments/Production)
+    │   │   └── Hosts/      -- AdminPortal.Web only, per box (extends Clients/Acme/Production)
+    │   │       ├── 10.0.1.11/
+    │   │       └── 10.0.1.12/
     │   └── Staging/       -- OrderProcessor, BillingApi (extends Environments/Staging)
     ├── Globex/
     │   ├── Production/  -- OrderProcessor, AdminPortal, BillingApi (extends Environments/Production)
@@ -71,6 +78,14 @@ plaintext rendering of the layout is the map:
         ├── Production/  -- extends Environments/Production, no overlays of its own
         └── Staging/       -- extends Environments/Staging, no overlays of its own
 ```
+
+`Clients/Acme/Production/Hosts/<Host>/` each `extends Clients/Acme/Production/configtransform.json`
+(one level deeper than a Client layer's own `extends`) and override just one field —
+`CacheNodeEndpoint` in `Web/AdminPortal.Web/Web.config`'s `appSettings`, simulating two
+load-balanced boxes that each talk to a different cache node. Every other setting (`SiteTitle`,
+`SessionTimeoutMinutes`, `AdminDb`, the `Admin` path's authorization rule) is completely
+unaffected by `--host` — it still resolves exactly as the Client layer already set it, whether or
+not `--host` is given at all.
 
 `LegacyGateway.Framework` is deliberately patched only at `Environments/Production` and
 `Clients/Acme/Production` — every other client/environment combination resolves it to base-only,
@@ -95,11 +110,13 @@ job-level-scoping bug this change caught in its own first CI run.
 
 ## Status
 
-- The four projects above build in CI on both Windows and Linux (`.github/workflows/build.yml`).
+- The six projects above build in CI on both Windows and Linux (`.github/workflows/build.yml`).
 - `.configtransform/` holds one `configtransform.json` per layer directory — 2 `Environments/`
-  layers and 6 `Clients/<Client>/<Env>/` layers, each pairing a project's own repo-root-relative
-  path with an optional `patch` file — covering all four projects across three clients (Acme,
-  Globex, Initech) x two environments (Staging, Production), with deliberately partial coverage.
+  layers, 6 `Clients/<Client>/<Env>/` layers, and (since `0.19.0-alpha`) 2
+  `Clients/Acme/Production/Hosts/<Host>/` layers — each pairing a project's own repo-root-relative
+  path with an optional `patch` file — covering all six projects across three clients (Acme,
+  Globex, Initech) x two environments (Staging, Production), plus two simulated load-balanced
+  servers for Acme/Production specifically, with deliberately partial coverage throughout.
   See "Overlay tree" below for the full layout.
 - **Every client/environment combination needs a layer file on disk, even with nothing to
   override.** `Initech` has zero overlays for any project, but its two layer files
