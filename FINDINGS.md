@@ -510,14 +510,21 @@ merge/list machinery needed zero changes — only `LayerPathResolver`, `CliOptio
   prints it, and runs `--list` with `--host` too, showing the full four-hop
   base→Environment→Client→Host chain in one call.
 - **Dispatched `Acme`/`Production`/`10.0.1.11` against the re-pinned (`0.19.0-alpha`) tool** — run
-  [#TBD](https://github.com/taljacob2/config-transform-pilot/actions) — every step passed,
-  including the new host-targeted one; the merged `Web.config` had `CacheNodeEndpoint` set to
-  `redis-node-a.internal:6379` with every other field identical to a `--host`-less resolution for
-  the same client/environment, and `--list --host 10.0.1.11` showed the chain ending in
+  [#29](https://github.com/taljacob2/config-transform-pilot/actions/runs/34427457131) — every
+  step passed, including the new host-targeted one; the merged `Web.config` had
+  `CacheNodeEndpoint` set to `redis-node-a.internal:6379`, with `SiteTitle`, `SessionTimeoutMinutes`,
+  `AdminDb`'s connection string, `compilation`/`customErrors`, and the `Admin` path's
+  `acme-admin` authorization rule all identical to the Client layer's own values — direct proof
+  the host override adds exactly one field and nothing else. `--list --host 10.0.1.11` showed the
+  chain ending in
   `patched in: .configtransform/Clients/Acme/Production/Hosts/10.0.1.11/patch-Web-AdminPortal.Web-Web.config.xml`.
-  A second dispatch with no `host` input confirmed `Web.config` is completely unaffected —
-  `CacheNodeEndpoint` stays at the base's own `localhost:6379` default, since no Environment or
-  Client layer overrides it, only the two new host layers do.
+  Within that same run, the plain (`--host`-less) `Web/AdminPortal.Web/Web.config` resolution step
+  showed `CacheNodeEndpoint` still at the base's own `localhost:6379` default — proving `--host`
+  only changes the resolution that actually names it, not the rest of the same dispatch. A second
+  dispatch with no `host` input at all — run
+  [#30](https://github.com/taljacob2/config-transform-pilot/actions/runs/34427461787) — confirmed
+  the new host-targeted step is `skipped` (not failed) when `--host` isn't given, the same
+  "missing overlay ≠ error" tolerance every other layer here already gets.
 - **git-crypt encrypted the four new files correctly, checked before committing**: `git-crypt
   status` on the new `Hosts/10.0.1.11/`/`Hosts/10.0.1.12/` paths reported all four as `encrypted`
   (two `configtransform.json`, two patch files), and the staged git blob content was verified as
