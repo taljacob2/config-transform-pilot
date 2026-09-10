@@ -547,7 +547,50 @@ it at content that already existed, rather than adding a new project or layer.
   `--diff-layers` against `Web/AdminPortal.Web/Web.config` for whatever client/environment the
   dispatch targets — no new `workflow_dispatch` input needed, since it reuses the run's existing
   `client`/`environment` selection.
-- **Dispatch results: filled in below once run.**
+- **Dispatched `Acme`/`Production`/`10.0.1.11` against the re-pinned (`0.22.0-alpha`) tool** — run
+  [#31](https://github.com/taljacob2/config-transform-pilot/actions/runs/34447736703) — every step
+  passed, including the new one. Its real output (not paraphrased):
+  ```
+  [.configtransform/Environments/Production/configtransform.json]
+   <?xml version="1.0" encoding="utf-8"?>
+   <configuration>
+     <appSettings>
+  -    <add key="SiteTitle" value="Admin Portal (Dev)" />
+  -    <add key="SessionTimeoutMinutes" value="20" />
+  +    <add key="SiteTitle" value="Admin Portal" />
+  +    <add key="SessionTimeoutMinutes" value="10" />
+       <add key="CacheNodeEndpoint" value="localhost:6379" />
+     </appSettings>
+     <connectionStrings>
+  -    <add name="AdminDb" connectionString="Server=devdb;..." providerName="System.Data.SqlClient" />
+  +    <add name="AdminDb" connectionString="Server=proddb;..." providerName="System.Data.SqlClient" />
+     </connectionStrings>
+     <system.web>
+  -    <compilation debug="true" targetFramework="4.8" />
+  -    <customErrors mode="Off" />
+  +    <compilation debug="false" targetFramework="4.8" />
+  +    <customErrors mode="RemoteOnly" />
+
+  [.configtransform/Clients/Acme/Production/configtransform.json overrides .configtransform/Environments/Production/configtransform.json]
+   <appSettings>
+  -    <add key="SiteTitle" value="Admin Portal" />
+  +    <add key="SiteTitle" value="Acme Admin Portal" />
+       <add key="SessionTimeoutMinutes" value="10" />
+       <add key="CacheNodeEndpoint" value="localhost:6379" />
+
+  [.configtransform/Clients/Acme/Production/configtransform.json]
+        <authorization>
+          <deny users="?" />
+  +        <allow users="acme-admin" />
+        </authorization>
+  ```
+  Real, direct confirmation of every design claim: the Environment layer's own section carries no
+  `overrides` clause (nothing had touched this content before it); the Client layer's `SiteTitle`
+  re-change is correctly tagged `overrides .../Environments/Production/configtransform.json`; and
+  the *same* Client layer's `<allow>` insertion — a genuinely new line, not a re-touch — gets its
+  own separate, untagged `[...Clients/Acme/Production/configtransform.json]` section instead of
+  being folded into the override-tagged one, exactly as designed for a layer whose patch spans more
+  than one hunk with different provenance.
 
 ## Deliberately not validated by this pilot
 
