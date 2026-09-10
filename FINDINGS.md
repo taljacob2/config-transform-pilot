@@ -532,6 +532,23 @@ merge/list machinery needed zero changes — only `LayerPathResolver`, `CliOptio
   since `.configtransform/**`'s existing `.gitattributes` rule (`filter=git-crypt`, no depth
   limit) covers a new, deeper subdirectory with zero configuration changes needed.
 
+## Re-pinning to `0.22.0-alpha`: per-layer diff attribution (`--diff-layers`)
+
+`config-transform` added `--diff-layers` (`docs/DIFF_LAYERS_DESIGN.md` in that repo) — `--diff`'s
+per-layer sibling: instead of one diff comparing the base file straight to the final merged
+result, it prints one diff per layer that actually changes the resource, tagged with which
+earlier layer it overrides when a later layer re-touches a line. No new pilot content was needed
+to exercise it: `Web/AdminPortal.Web/Web.config` already has a real multi-layer chain from the
+`0.19.0-alpha` re-pin above (`Environments/<E>` and, for `Acme`/`Production`, `Clients/Acme/
+Production` too), so this is the first re-pin here to validate a new capability purely by pointing
+it at content that already existed, rather than adding a new project or layer.
+
+- **`build-transformed.yml` gained one new step**, right after the existing `--list` step:
+  `--diff-layers` against `Web/AdminPortal.Web/Web.config` for whatever client/environment the
+  dispatch targets — no new `workflow_dispatch` input needed, since it reuses the run's existing
+  `client`/`environment` selection.
+- **Dispatch results: filled in below once run.**
+
 ## Deliberately not validated by this pilot
 
 - **Real inventory against an actual solution repo.** This pilot's six projects, their config
