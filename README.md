@@ -266,6 +266,13 @@ job-level-scoping bug this change caught in its own first CI run.
   gained a resolve step, a `PyYAML`-based validation check, and a `cat` step, mirroring the
   existing five projects'. **Re-pinned to `0.16.0-alpha` and verified against a real dispatch**:
   see `FINDINGS.md`'s "Re-pinning to `0.16.0-alpha`" section for the run link and full writeup.
+- **Re-pinned to `0.22.0-alpha`** — `config-transform` added `--diff-layers`
+  (`docs/DIFF_LAYERS_DESIGN.md`), `--diff`'s per-layer sibling: one diff per layer that actually
+  changes a resource, tagged with which earlier layer it overrides when relevant. No new pilot
+  content needed — `Web/AdminPortal.Web/Web.config`'s existing multi-layer chain (from the
+  `0.19.0-alpha` re-pin above) already exercises it; `build-transformed.yml` gained one new
+  `--diff-layers` step. **Verified against a real dispatch**: see `FINDINGS.md`'s "Re-pinning to
+  `0.22.0-alpha`" section for the run link and full writeup.
 
 ## License
 

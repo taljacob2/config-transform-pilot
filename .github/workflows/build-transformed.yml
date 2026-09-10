@@ -180,6 +180,16 @@ jobs:
           dotnet tool run configtransform -- \
             --list --client "${{ inputs.client }}" --environment "${{ inputs.environment }}"
 
+      - name: Show which layer changed which line (--diff-layers, config-transform 0.22.0-alpha)
+        # Web/AdminPortal.Web/Web.config is patched at both Environments/<E> and (for Acme/Production)
+        # Clients/Acme/Production -- a real multi-layer chain, not a synthetic fixture, to exercise
+        # docs/DIFF_LAYERS_DESIGN.md's per-layer diff attribution against.
+        run: |
+          dotnet tool run configtransform -- \
+            --resource Web/AdminPortal.Web/Web.config \
+            --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
+            --diff-layers
+
       - name: Demonstrate multi-resource mode (--resource omitted, --output as a directory)
         # Not the deploy path -- .NET Framework needs <AssemblyName>.exe.config next to the exe,
         # and this mode mirrors each resource's own repo-root-relative path under --output instead.

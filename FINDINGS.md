@@ -532,6 +532,66 @@ merge/list machinery needed zero changes — only `LayerPathResolver`, `CliOptio
   since `.configtransform/**`'s existing `.gitattributes` rule (`filter=git-crypt`, no depth
   limit) covers a new, deeper subdirectory with zero configuration changes needed.
 
+## Re-pinning to `0.22.0-alpha`: per-layer diff attribution (`--diff-layers`)
+
+`config-transform` added `--diff-layers` (`docs/DIFF_LAYERS_DESIGN.md` in that repo) — `--diff`'s
+per-layer sibling: instead of one diff comparing the base file straight to the final merged
+result, it prints one diff per layer that actually changes the resource, tagged with which
+earlier layer it overrides when a later layer re-touches a line. No new pilot content was needed
+to exercise it: `Web/AdminPortal.Web/Web.config` already has a real multi-layer chain from the
+`0.19.0-alpha` re-pin above (`Environments/<E>` and, for `Acme`/`Production`, `Clients/Acme/
+Production` too), so this is the first re-pin here to validate a new capability purely by pointing
+it at content that already existed, rather than adding a new project or layer.
+
+- **`build-transformed.yml` gained one new step**, right after the existing `--list` step:
+  `--diff-layers` against `Web/AdminPortal.Web/Web.config` for whatever client/environment the
+  dispatch targets — no new `workflow_dispatch` input needed, since it reuses the run's existing
+  `client`/`environment` selection.
+- **Dispatched `Acme`/`Production`/`10.0.1.11` against the re-pinned (`0.22.0-alpha`) tool** — run
+  [#31](https://github.com/taljacob2/config-transform-pilot/actions/runs/34447736703) — every step
+  passed, including the new one. Its real output (not paraphrased):
+  ```
+  [.configtransform/Environments/Production/configtransform.json]
+   <?xml version="1.0" encoding="utf-8"?>
+   <configuration>
+     <appSettings>
+  -    <add key="SiteTitle" value="Admin Portal (Dev)" />
+  -    <add key="SessionTimeoutMinutes" value="20" />
+  +    <add key="SiteTitle" value="Admin Portal" />
+  +    <add key="SessionTimeoutMinutes" value="10" />
+       <add key="CacheNodeEndpoint" value="localhost:6379" />
+     </appSettings>
+     <connectionStrings>
+  -    <add name="AdminDb" connectionString="Server=devdb;..." providerName="System.Data.SqlClient" />
+  +    <add name="AdminDb" connectionString="Server=proddb;..." providerName="System.Data.SqlClient" />
+     </connectionStrings>
+     <system.web>
+  -    <compilation debug="true" targetFramework="4.8" />
+  -    <customErrors mode="Off" />
+  +    <compilation debug="false" targetFramework="4.8" />
+  +    <customErrors mode="RemoteOnly" />
+
+  [.configtransform/Clients/Acme/Production/configtransform.json overrides .configtransform/Environments/Production/configtransform.json]
+   <appSettings>
+  -    <add key="SiteTitle" value="Admin Portal" />
+  +    <add key="SiteTitle" value="Acme Admin Portal" />
+       <add key="SessionTimeoutMinutes" value="10" />
+       <add key="CacheNodeEndpoint" value="localhost:6379" />
+
+  [.configtransform/Clients/Acme/Production/configtransform.json]
+        <authorization>
+          <deny users="?" />
+  +        <allow users="acme-admin" />
+        </authorization>
+  ```
+  Real, direct confirmation of every design claim: the Environment layer's own section carries no
+  `overrides` clause (nothing had touched this content before it); the Client layer's `SiteTitle`
+  re-change is correctly tagged `overrides .../Environments/Production/configtransform.json`; and
+  the *same* Client layer's `<allow>` insertion — a genuinely new line, not a re-touch — gets its
+  own separate, untagged `[...Clients/Acme/Production/configtransform.json]` section instead of
+  being folded into the override-tagged one, exactly as designed for a layer whose patch spans more
+  than one hunk with different provenance.
+
 ## Deliberately not validated by this pilot
 
 - **Real inventory against an actual solution repo.** This pilot's six projects, their config
