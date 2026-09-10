@@ -476,6 +476,55 @@ a third language (Python) after C#/.NET Framework/.NET Core and Node.js.
   as opaque ciphertext (`file` reports `data`, not readable YAML) before committing — the same
   safety check this repo's `SECRETS.md` calls for, just re-run rather than newly discovered.
 
+## Re-pinning to `0.19.0-alpha`: a multi-host Production scenario
+
+`config-transform` added a third, optional layer axis, `--host`/`-H`
+(`docs/HOST_LAYER_DESIGN.md` in that repo) — one more `extends` hop under an existing
+Client/Environment layer, `.configtransform/Clients/<C>/<E>/Hosts/<H>/configtransform.json`, for
+a real deployment shape this pilot hadn't simulated yet: a load-balanced Production environment
+where individual servers need genuinely different config from each other, not just from other
+clients/environments (`config-transform#35`/`#36`). Verified against the real code before being
+built (not assumed): `LayerChain`'s `extends`-walk, `--list --resource`'s reverse lookup, and
+every format engine's `Merge` method already treated directory depth as arbitrary, so the core
+merge/list machinery needed zero changes — only `LayerPathResolver`, `CliOptionsParser`,
+`SetTargetResolver`, and `InitPlanner`/`InitRunner` did.
+
+- **Two new host layers under `Clients/Acme/Production`** — `Hosts/10.0.1.11/` and
+  `Hosts/10.0.1.12/`, each `extends`-ing `Clients/Acme/Production/configtransform.json` (one level
+  deeper than a Client layer's own `extends`, mirroring the existing Client→Environment default
+  one level up). Both patch `Web/AdminPortal.Web/Web.config` — the one project here that's a
+  natural stand-in for a web tier behind a load balancer — overriding a single new appSetting,
+  `CacheNodeEndpoint` (added to the base `Web.config` with a `localhost:6379` dev default, and
+  exposed through `AdminPortalSettings.CacheNodeEndpoint` alongside the existing settings), to a
+  distinct value per box (`redis-node-a.internal:6379` / `redis-node-b.internal:6379`) — simulating
+  two servers each talking to their own cache node, the exact scenario `docs/HOST_LAYER_DESIGN.md`
+  was written against. Every other field in the chain (`SiteTitle`, `SessionTimeoutMinutes`,
+  `AdminDb`'s connection string, the `Admin` path's `acme-admin` authorization rule) is completely
+  untouched by either host layer — a real, direct proof that `--host` is genuinely additive, not a
+  redefinition of how Client/Environment resolution already worked.
+- **`build-transformed.yml` gained an optional `host` `workflow_dispatch` input** (blank by
+  default — every client/environment combination other than `Acme`/`Production` has no `Hosts/`
+  layer at all, so the new step is skipped rather than failing, the same "missing overlay ≠
+  error" tolerance every other layer here already gets) and a conditional step that resolves
+  `Web/AdminPortal.Web/Web.config` with `--host` added, validates it's still well-formed XML,
+  prints it, and runs `--list` with `--host` too, showing the full four-hop
+  base→Environment→Client→Host chain in one call.
+- **Dispatched `Acme`/`Production`/`10.0.1.11` against the re-pinned (`0.19.0-alpha`) tool** — run
+  [#TBD](https://github.com/taljacob2/config-transform-pilot/actions) — every step passed,
+  including the new host-targeted one; the merged `Web.config` had `CacheNodeEndpoint` set to
+  `redis-node-a.internal:6379` with every other field identical to a `--host`-less resolution for
+  the same client/environment, and `--list --host 10.0.1.11` showed the chain ending in
+  `patched in: .configtransform/Clients/Acme/Production/Hosts/10.0.1.11/patch-Web-AdminPortal.Web-Web.config.xml`.
+  A second dispatch with no `host` input confirmed `Web.config` is completely unaffected —
+  `CacheNodeEndpoint` stays at the base's own `localhost:6379` default, since no Environment or
+  Client layer overrides it, only the two new host layers do.
+- **git-crypt encrypted the four new files correctly, checked before committing**: `git-crypt
+  status` on the new `Hosts/10.0.1.11/`/`Hosts/10.0.1.12/` paths reported all four as `encrypted`
+  (two `configtransform.json`, two patch files), and the staged git blob content was verified as
+  opaque ciphertext before pushing — the same safety check `SECRETS.md` calls for, re-run here
+  since `.configtransform/**`'s existing `.gitattributes` rule (`filter=git-crypt`, no depth
+  limit) covers a new, deeper subdirectory with zero configuration changes needed.
+
 ## Deliberately not validated by this pilot
 
 - **Real inventory against an actual solution repo.** This pilot's six projects, their config

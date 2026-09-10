@@ -18,6 +18,15 @@ on:
         options:
           - Staging
           - Production
+      host:
+        description: "Host name (optional -- a specific load-balanced server; only Clients/Acme/Production has any today)"
+        required: false
+        type: choice
+        default: ""
+        options:
+          - ""
+          - "10.0.1.11"
+          - "10.0.1.12"
 
 jobs:
   transform:
@@ -75,6 +84,29 @@ jobs:
             --resource Web/AdminPortal.Web/Web.config \
             --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
             --output publish/AdminPortal.Web/Web.config
+
+      - name: Resolve Web/AdminPortal.Web/Web.config for one specific host (config-transform 0.19.0-alpha)
+        # --host is a third, optional layer axis (docs/HOST_LAYER_DESIGN.md in config-transform) for
+        # load-balanced servers that need genuinely different config from each other, not just from
+        # other clients/environments -- here, which cache node this box talks to. Only
+        # Clients/Acme/Production has any Hosts/ layers today (10.0.1.11, 10.0.1.12), so this step is
+        # skipped for every other client/environment/host combination rather than failing loudly --
+        # the same "missing overlay ≠ error" tolerance every other layer in this pilot already has.
+        if: inputs.host != ''
+        run: |
+          mkdir -p publish/AdminPortal.Web-Host
+          dotnet tool run configtransform -- \
+            --resource Web/AdminPortal.Web/Web.config \
+            --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" --host "${{ inputs.host }}" \
+            --output publish/AdminPortal.Web-Host/Web.config
+          python3 -c "import xml.etree.ElementTree as ET; ET.parse(open('publish/AdminPortal.Web-Host/Web.config', encoding='utf-8-sig'))"
+          echo "::group::AdminPortal.Web/Web.config (host ${{ inputs.host }})"
+          cat publish/AdminPortal.Web-Host/Web.config
+          echo "::endgroup::"
+          echo "::group::--list for host ${{ inputs.host }} (full base->Environment->Client->Host chain)"
+          dotnet tool run configtransform -- \
+            --list --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" --host "${{ inputs.host }}"
+          echo "::endgroup::"
 
       - name: Resolve apps/billing/BillingApi.Core/appsettings.json
         run: |
@@ -176,8 +208,10 @@ jobs:
           path: |
             publish/OrderProcessor.Framework/OrderProcessor.Framework.exe.config
             publish/AdminPortal.Web/Web.config
+            publish/AdminPortal.Web-Host/Web.config
             publish/BillingApi.Core/appsettings.json
             publish/LegacyGateway.Framework/LegacyGateway.Framework.exe.config
             publish/NotificationWorker/.env
             publish/ReportingService/config.yaml
             publish-all/**
+          if-no-files-found: warn
