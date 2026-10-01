@@ -258,3 +258,6 @@ jobs:
             publish/NotificationWorker/firebase.json
             publish-all/**
           if-no-files-found: warn
+          # upload-artifact v4 skips dotfiles by default, which silently left NotificationWorker/.env
+          # out of every artifact until this was noticed during the 0.24.0-alpha secrets migration.
+          include-hidden-files: true
