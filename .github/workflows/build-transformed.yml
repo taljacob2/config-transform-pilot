@@ -184,11 +184,14 @@ jobs:
         # Web/AdminPortal.Web/Web.config is patched at both Environments/<E> and (for Acme/Production)
         # Clients/Acme/Production -- a real multi-layer chain, not a synthetic fixture, to exercise
         # docs/DIFF_LAYERS_DESIGN.md's per-layer diff attribution against.
+        # --color always (config-transform 0.23.0-alpha): diff colour now defaults to "auto" --
+        # only when stdout is a terminal, which a GitHub Actions step's never is -- but the Actions
+        # log viewer does render ANSI colour, so ask for it explicitly here.
         run: |
           dotnet tool run configtransform -- \
             --resource Web/AdminPortal.Web/Web.config \
             --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
-            --diff-layers
+            --diff-layers --color always
 
       - name: Demonstrate multi-resource mode (--resource omitted, --output as a directory)
         # Not the deploy path -- .NET Framework needs <AssemblyName>.exe.config next to the exe,
