@@ -592,6 +592,41 @@ it at content that already existed, rather than adding a new project or layer.
   being folded into the override-tagged one, exactly as designed for a layer whose patch spans more
   than one hunk with different provenance.
 
+## Re-pinning to `0.23.0-alpha`: output fidelity
+
+`config-transform`'s `0.23.0-alpha` changes how output is written, not what layers exist: JSON and
+YAML are merged into the base document's own tree instead of being flattened through
+`Microsoft.Extensions.Configuration` (`docs/TREE_MERGE_DESIGN.md` in that repo), keys match
+case-sensitively across layers (a case-only mismatch is an error), console output is always UTF-8,
+JSON is written without `\u` escapes, and diff colour follows `--color auto|always|never`.
+
+- **Checked before re-pinning, not after.** Every overlay here was compared key by key against its
+  base: none relies on case-insensitive matching, so the new case-only-mismatch error can't fire
+  here. Then all 8 client/environment/host combinations were resolved with both `0.22.0-alpha`
+  and the new build (45 files). XML and `.env`: byte-identical (29 files). JSON: layout only,
+  zero value changes (8 files). YAML: only key order and quoting differ, and the new output now
+  matches the source files' own layout (8 files).
+- **`build-transformed.yml`'s `--diff-layers` step gained `--color always`.** Colour now defaults
+  to `auto` (only when stdout is a terminal, which an Actions step's never is), but the Actions
+  log viewer renders ANSI colour, so the step asks for it.
+- **Dispatched `Acme`/`Production`/`10.0.1.11` against `0.23.0-alpha`** — run
+  [#32](https://github.com/taljacob2/config-transform-pilot/actions/runs/36809701442) — every step
+  passed. `BillingApi.Core/appsettings.json` now keeps its source key order (`Billing`,
+  `Logging`, `AllowedHosts`; `0.22.0-alpha` had moved `AllowedHosts` first and `RetryCount` after
+  `FeatureFlags`), and `ReportingService/config.yaml` keeps `Schedule` before `Enabled` and its
+  double quotes, as in the source:
+  ```
+  LogLevel: warn
+  Reporting:
+    Schedule: "*/15 * * * *"
+    Enabled: true
+  ```
+  The `--diff-layers` step's diff lines carry ANSI colour again (13 coloured lines in the raw log).
+- **Pre-existing quirk noticed in the same log, not caused by this release:** merged JSON output
+  has no trailing newline, so the "Show resolved config" step's `cat` glues `::endgroup::` onto
+  the JSON's closing `}` and that log group never closes. `0.22.0-alpha` wrote JSON the same way.
+  Reported back to `config-transform` as a follow-up.
+
 ## Deliberately not validated by this pilot
 
 - **Real inventory against an actual solution repo.** This pilot's six projects, their config

@@ -273,6 +273,12 @@ job-level-scoping bug this change caught in its own first CI run.
   `0.19.0-alpha` re-pin above) already exercises it; `build-transformed.yml` gained one new
   `--diff-layers` step. **Verified against a real dispatch**: see `FINDINGS.md`'s "Re-pinning to
   `0.22.0-alpha`" section for the run link and full writeup.
+- **Re-pinned to `0.23.0-alpha`** — `config-transform`'s output-fidelity release: JSON/YAML are
+  merged into the base document's own tree (source key order, value types and YAML quoting kept),
+  keys match case-sensitively, console output is always UTF-8, and diff colour follows a new
+  `--color auto|always|never` flag. No pilot content changed; the `--diff-layers` step gained
+  `--color always`, since colour now defaults to terminal-only. **Verified against a real
+  dispatch**: see `FINDINGS.md`'s "Re-pinning to `0.23.0-alpha`" section.
 
 ## License
 
