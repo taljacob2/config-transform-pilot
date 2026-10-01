@@ -283,6 +283,11 @@ job-level-scoping bug this change caught in its own first CI run.
 - **Re-pinned to `0.23.1-alpha`** — JSON/YAML output now keeps the source's line endings and final
   newline, fixing the `::endgroup::` glitch the `0.23.0-alpha` run exposed in this repo's CI log.
   **Verified against a real dispatch**: see `FINDINGS.md`'s "Re-pinning to `0.23.1-alpha`" section.
+- **Re-pinned to `0.24.0-alpha` and migrated to secrets** — every connection string and queue URL
+  is a `{{CFSECRET_NAME}}` placeholder with its value in an encrypted `*.secret.env` file, a
+  whole-file Firebase secret uses `replace`, and git-crypt now covers only
+  `.configtransform/**/*.secret.*` (see "Secrets" below). **Verified against real dispatches**: see
+  `FINDINGS.md`'s "Re-pinning to `0.24.0-alpha`" section.
 
 ## Secrets
 

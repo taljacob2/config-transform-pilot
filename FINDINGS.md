@@ -641,6 +641,44 @@ endings and final newline.
   passed, and the "Show resolved config" step's `BillingApi.Core/appsettings.json` group now
   closes on its own line: no `::endgroup::` is glued onto any line of the log.
 
+## Re-pinning to `0.24.0-alpha`: secrets, and encrypting only `*.secret.*`
+
+`config-transform`'s `0.24.0-alpha` separates secrets from configuration (`docs/SECRETS_DESIGN.md`
+in that repo): `{{CFSECRET_NAME}}` placeholders in plaintext overlays, values in encrypted
+`*.secret.env` files a layer lists under `secrets`, and whole-file secrets via a resource's
+`replace`. This repo was migrated onto it, following that design's own migration checklist:
+
+- **Every connection string and queue URL became a secret** — Production and Staging at the
+  Environment layers, and Globex's dedicated databases as a client-level secret. One whole-file
+  secret was added: `NotificationWorker/firebase.json`, committed as `{}` and replaced at
+  `Clients/Acme/Production` by an encrypted `firebase.secret.json` (a fake service account).
+- **The checklist's "no secret left in plaintext" step caught real misses.** The first pass moved
+  only the AdminPortal and Production queue values; scanning every staged plaintext blob for the
+  secret values turned up OrderProcessor's `OrdersDb` connection strings (Production and Globex)
+  still in place, and Staging had the same kind of values. All were moved before anything was
+  committed.
+- **Outputs unchanged.** All 45 files resolved across the 8 client/environment/host combinations
+  stayed byte-identical to `0.23.1-alpha`'s; the only additions are the three Acme/Production
+  chains' `firebase.json`.
+- **`.gitattributes` narrowed** from `.configtransform/**` to `.configtransform/**/*.secret.*`, then
+  `git add --renormalize .configtransform`. Checked blob by blob before committing: exactly the six
+  secret files are encrypted, and the other 35 layer and patch files are plaintext — readable and
+  reviewable on GitHub from that commit on. Earlier history stays encrypted.
+- **`build-transformed.yml`** registers every `*.secret.env` value as a log mask right after
+  unlocking, since its "Show resolved config" step `cat`s resolved files; and resolves
+  `firebase.json` with a JSON check that never prints it.
+- **Dispatched** `Acme`/`Production`/`10.0.1.11` (run
+  [#34](https://github.com/taljacob2/config-transform-pilot/actions/runs/36848573931)) and
+  `Globex`/`Staging` (run
+  [#35](https://github.com/taljacob2/config-transform-pilot/actions/runs/36848583933)); both passed
+  every step. Neither log contains any secret value (each was searched for), the secrets report
+  shows each placeholder `resolved` with its source file, and the downloaded artifact has the real
+  values substituted, no placeholder left, and `firebase.json` byte-identical to the secret file.
+- **A pre-existing gap the artifact check exposed:** `actions/upload-artifact@v4` skips dotfiles
+  unless `include-hidden-files: true`, so `NotificationWorker/.env` had never been uploaded. Fixed;
+  run [#36](https://github.com/taljacob2/config-transform-pilot/actions/runs/36848738654) confirms
+  the `.env` reaches the artifact with the real Production queue URL.
+
 ## Deliberately not validated by this pilot
 
 - **Real inventory against an actual solution repo.** This pilot's six projects, their config
