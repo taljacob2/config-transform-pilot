@@ -14,7 +14,7 @@ push/PR) needs neither, by design (`CONFIG_MANAGEMENT.md` §8.1 in `config-trans
 
 | Secret | Required? | Purpose |
 |---|---|---|
-| `GIT_CRYPT_KEY_BASE64` | Always | Unlocks `.configtransform/**` (git-crypt encrypted) so the workflow can read the `configtransform.json` layer files and patch files. |
+| `GIT_CRYPT_KEY_BASE64` | Always | Unlocks the git-crypt-encrypted `.configtransform/**/*.secret.*` files (the secret values and the whole-file Firebase secret) so a real run can fill in `{{CFSECRET_…}}` placeholders. Everything else under `.configtransform/` is plaintext. |
 | `GH_PACKAGES_TOKEN` | Only if `config-transform`'s GitHub Packages are private | Lets `dotnet tool restore` pull `ConfigTransform.Cli`. A workflow's own default `GITHUB_TOKEN` cannot read packages published under a *different* private repository, even one owned by the same account — confirmed the hard way in this repo; see `FINDINGS.md`. |
 
 | Variable | Required? | Purpose |
@@ -35,14 +35,15 @@ host isn't just `github.com` with a different name — the URL shape itself chan
 
 ### `GIT_CRYPT_KEY_BASE64`
 
-This is the git-crypt symmetric key for `.configtransform/**`, base64-encoded so it can live in
-a single-line GitHub secret. It is **not** a GitHub token or credential — it's a raw encryption
-key `git-crypt init` generates locally; anyone who has it can decrypt every file under
-`.configtransform/` in this repo, forever, so treat it exactly like a password: never commit it,
+This is the git-crypt symmetric key for `.configtransform/**/*.secret.*` (and, in history before
+the `0.24.0-alpha` migration, the whole `.configtransform/**` tree), base64-encoded so it can live
+in a single-line GitHub secret. It is **not** a GitHub token or credential — it's a raw encryption
+key `git-crypt init` generates locally; anyone who has it can decrypt every encrypted file in this
+repo, forever, so treat it exactly like a password: never commit it,
 never paste it anywhere but a secret store, and store a backup somewhere durable (a team
 password manager/vault) before it exists in only one place. See `CONFIG_MANAGEMENT.md` §7 in
 `config-transform` for the full design reasoning (why git-crypt, why a single symmetric key,
-what happens if it's lost — losing it with no backup makes `.configtransform/**` permanently
+what happens if it's lost — losing it with no backup makes every encrypted file permanently
 unrecoverable, by design, not a bug).
 
 **If you're picking up an existing repo (this one) and need the key someone else generated:**
@@ -57,7 +58,7 @@ commands differ.
 ```bash
 # Run once, in the repo root, before anything under .configtransform/ is committed:
 git-crypt init
-echo ".configtransform/** filter=git-crypt diff=git-crypt" >> .gitattributes
+echo ".configtransform/**/*.secret.* filter=git-crypt diff=git-crypt" >> .gitattributes
 git add .gitattributes
 git commit -m "Add git-crypt attributes for .configtransform/"
 
@@ -130,7 +131,9 @@ restore, run a first command — see `config-transform`'s
 which is generic across any repo that consumes `config-transform`. This section only has what's
 specific to *this* repo — the values `ONBOARDING.md`'s "Before you start" asks for:
 
-- **This repo does use git-crypt** for `.configtransform/**`. Ask whoever set it up for the key
+- **This repo does use git-crypt**, for `.configtransform/**/*.secret.*` only (secret values and
+  whole-file secrets — every overlay is plaintext). Without the key, previews still work and
+  report each secret as `unknown`; a real run (`-o`) needs it. Ask whoever set it up for the key
   (see `GIT_CRYPT_KEY_BASE64` above). If your working copy is still locked, `config-transform`
   gives an actionable error naming the file and telling you to run `git-crypt unlock` rather than
   a raw JSON parse failure — this now names a `configtransform.json` file instead of a

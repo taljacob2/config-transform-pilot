@@ -1,1 +1,1 @@
-.configtransform/** filter=git-crypt diff=git-crypt
+.configtransform/**/*.secret.* filter=git-crypt diff=git-crypt

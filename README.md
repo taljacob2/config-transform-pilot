@@ -54,10 +54,9 @@ web tier behind a load balancer where each box talks to its own cache node
 
 ## Overlay tree
 
-Under the old schema the tree structure itself was self-explanatory from directory names. Under
-the new schema the `configtransform.json` files that declare what each layer patches are
-git-crypt-encrypted at rest along with everything else under `.configtransform/**` — so this
-plaintext rendering of the layout is the map:
+Every `configtransform.json` and patch file is plaintext and readable on GitHub (since the
+`0.24.0-alpha` secrets migration — see "Secrets" below); only the `*.secret.*` files are
+encrypted. The layout at a glance:
 
 ```
 .configtransform/
@@ -127,8 +126,10 @@ job-level-scoping bug this change caught in its own first CI run.
   Initech would silently fall back to *raw base* content, losing the Environment layer too, not
   just the client override. This is `config-transform`'s own documented "accepted cost" of the
   new design — see `FINDINGS.md` for how this pilot hit it directly during migration.
-- `.configtransform/**` is encrypted at rest with git-crypt (`.gitattributes`); GitHub's web UI
-  correctly shows these files as opaque binary blobs.
+- Only `.configtransform/**/*.secret.*` is encrypted at rest with git-crypt (`.gitattributes`) —
+  every overlay is plaintext and reviewable on GitHub, and only the secret files show as opaque
+  binary blobs. (Until `0.24.0-alpha` the whole `.configtransform/**` tree was encrypted; that
+  history stays encrypted.)
 - `.github/workflows/build-transformed.yml` (manual `workflow_dispatch`, `client`/`environment`
   inputs) builds all four projects, resolves each project's config file for the requested
   target, validates the merged output is well-formed, and uploads it as a build artifact — per
@@ -282,6 +283,29 @@ job-level-scoping bug this change caught in its own first CI run.
 - **Re-pinned to `0.23.1-alpha`** — JSON/YAML output now keeps the source's line endings and final
   newline, fixing the `::endgroup::` glitch the `0.23.0-alpha` run exposed in this repo's CI log.
   **Verified against a real dispatch**: see `FINDINGS.md`'s "Re-pinning to `0.23.1-alpha`" section.
+
+## Secrets
+
+Since the `0.24.0-alpha` re-pin, secret values live apart from the configuration
+(`config-transform`'s `docs/SECRETS_DESIGN.md`). Patches hold `{{CFSECRET_NAME}}` placeholders;
+the values sit in encrypted `*.secret.env` files that each layer lists under `secrets`, and
+`configtransform -o` fills them in. Every connection string and queue URL in this repo is one:
+
+| Secret | Defined in | Used by |
+|---|---|---|
+| `CFSECRET_ORDERS_DB_CONNECTION`, `CFSECRET_ADMIN_DB_CONNECTION` | `Environments/Production/databases.secret.env` | OrderProcessor/AdminPortal, every Production client |
+| `CFSECRET_PROD_QUEUE_URL` | `Environments/Production/notifications.secret.env` | NotificationWorker, Production |
+| `CFSECRET_STAGING_ORDERS_DB_CONNECTION` | `Environments/Staging/databases.secret.env` | OrderProcessor, Staging |
+| `CFSECRET_STAGING_QUEUE_URL` | `Environments/Staging/notifications.secret.env` | NotificationWorker, Staging |
+| `CFSECRET_GLOBEX_*_DB_CONNECTION` | `Clients/Globex/Production/databases.secret.env` | Globex's dedicated databases (a client-level secret) |
+
+One whole-file secret, too: `services/notifications/NotificationWorker/firebase.json` is committed
+as `{}` and `replace`d at `Clients/Acme/Production` by the encrypted `firebase.secret.json` (a fake
+service account) — written byte for byte, never merged.
+
+Without the git-crypt key, every command still works: previews keep the placeholders and report
+each secret as `unknown`. `build-transformed.yml` registers every secret value as a log mask
+right after unlocking, so the steps that `cat` resolved files print `***` in their place.
 
 ## License
 

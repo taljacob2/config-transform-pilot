@@ -63,6 +63,23 @@ jobs:
           git-crypt unlock /tmp/git-crypt-key
           rm /tmp/git-crypt-key
 
+      - name: Mask every secret value in this job's log (config-transform 0.24.0-alpha secrets)
+        # Since 0.24.0-alpha, secret values live only in .configtransform/**/*.secret.env files
+        # ({{CFSECRET_NAME}} placeholders everywhere else -- config-transform's
+        # docs/SECRETS_DESIGN.md). The tool itself never prints a value, but later steps here
+        # `cat` the files it writes. Registering each value as a mask makes GitHub replace it with
+        # *** anywhere it would appear in this job's log. Must run after the unlock above.
+        run: |
+          find .configtransform -name '*.secret.env' -print0 | while IFS= read -r -d '' file; do
+            while IFS= read -r line || [ -n "$line" ]; do
+              case "$line" in ''|'#'*) continue ;; esac
+              value="${line#*=}"
+              value="${value%\"}"; value="${value#\"}"
+              value="${value%\'}"; value="${value#\'}"
+              [ -n "$value" ] && echo "::add-mask::$value"
+            done < "$file"
+          done
+
       - name: Restore local tools
         run: dotnet tool restore
 
@@ -138,6 +155,18 @@ jobs:
             --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
             --output publish/ReportingService/config.yaml
 
+      - name: Resolve services/notifications/NotificationWorker/firebase.json (a whole-file secret, config-transform 0.24.0-alpha)
+        # Clients/Acme/Production `replace`s this file with an encrypted firebase.secret.json, byte
+        # for byte (docs/SECRETS_DESIGN.md's "File secrets"); every other combination gets the
+        # committed placeholder ({}). Validated as JSON but never printed -- it's a credential file.
+        run: |
+          mkdir -p publish/NotificationWorker
+          dotnet tool run configtransform -- \
+            --resource services/notifications/NotificationWorker/firebase.json \
+            --client "${{ inputs.client }}" --environment "${{ inputs.environment }}" \
+            --output publish/NotificationWorker/firebase.json
+          python3 -c "import json; d = json.load(open('publish/NotificationWorker/firebase.json')); print('firebase.json:', 'service account for ' + d['project_id'] if d else 'placeholder ({})')"
+
       - name: Install PyYAML (for the YAML validation step below only -- ReportingService itself is never built or run)
         run: pip install --quiet pyyaml
 
@@ -154,7 +183,7 @@ jobs:
           "
           python3 -c "import yaml; yaml.safe_load(open('publish/ReportingService/config.yaml'))"
 
-      - name: Show resolved config (this pilot has no real secrets, so this is safe)
+      - name: Show resolved config (secret values are masked by the "Mask every secret value" step)
         run: |
           echo "::group::OrderProcessor.Framework/App.config"
           cat publish/OrderProcessor.Framework/OrderProcessor.Framework.exe.config
@@ -226,5 +255,6 @@ jobs:
             publish/LegacyGateway.Framework/LegacyGateway.Framework.exe.config
             publish/NotificationWorker/.env
             publish/ReportingService/config.yaml
+            publish/NotificationWorker/firebase.json
             publish-all/**
           if-no-files-found: warn
