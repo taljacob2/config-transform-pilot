@@ -279,6 +279,9 @@ job-level-scoping bug this change caught in its own first CI run.
   `--color auto|always|never` flag. No pilot content changed; the `--diff-layers` step gained
   `--color always`, since colour now defaults to terminal-only. **Verified against a real
   dispatch**: see `FINDINGS.md`'s "Re-pinning to `0.23.0-alpha`" section.
+- **Re-pinned to `0.23.1-alpha`** — JSON/YAML output now keeps the source's line endings and final
+  newline, fixing the `::endgroup::` glitch the `0.23.0-alpha` run exposed in this repo's CI log.
+  **Verified against a real dispatch**: see `FINDINGS.md`'s "Re-pinning to `0.23.1-alpha`" section.
 
 ## License
 

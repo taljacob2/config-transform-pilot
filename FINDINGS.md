@@ -625,7 +625,21 @@ JSON is written without `\u` escapes, and diff colour follows `--color auto|alwa
 - **Pre-existing quirk noticed in the same log, not caused by this release:** merged JSON output
   has no trailing newline, so the "Show resolved config" step's `cat` glues `::endgroup::` onto
   the JSON's closing `}` and that log group never closes. `0.22.0-alpha` wrote JSON the same way.
-  Reported back to `config-transform` as a follow-up.
+  Reported back to `config-transform` as a follow-up — fixed in `0.23.1-alpha`, below.
+
+## Re-pinning to `0.23.1-alpha`: line endings and final newline
+
+`config-transform`'s `0.23.1-alpha` fixes the quirk found above: JSON/YAML output now keeps the
+base file's line endings and ends with a newline exactly when the base does (as XML output always
+has), and `set` keeps the same conventions in any file it rewrites. Checked locally first: across
+all 8 client/environment/host combinations, the XML and `.env` output is byte-identical to
+`0.23.0-alpha`'s, and the 16 JSON/YAML files differ only in now matching their sources' LF line
+endings and final newline.
+
+- **Dispatched `Acme`/`Production`/`10.0.1.11` against `0.23.1-alpha`** — run
+  [#33](https://github.com/taljacob2/config-transform-pilot/actions/runs/36815765874) — every step
+  passed, and the "Show resolved config" step's `BillingApi.Core/appsettings.json` group now
+  closes on its own line: no `::endgroup::` is glued onto any line of the log.
 
 ## Deliberately not validated by this pilot
 
