@@ -701,6 +701,18 @@ files were checked byte-identical against the previous `main` build before relea
 [#38](https://github.com/taljacob2/config-transform-pilot/actions/runs/36960373022) — every step
 passed on `0.26.0-alpha`, with no secret value in its log.
 
+## Re-pinning to `0.27.0-alpha`
+
+Report output only: each secret now gets its own tree in the resolution report and `--list` —
+where its placeholder is used, then every layer and the environment variable as `patched in:` /
+`not patched in` — and the chain's first step reads `resource` instead of `base`. No CI step here
+parses that output or passes `--reveal-secrets`, and the merge engines are untouched, so the
+resolved files don't change. `--list` now also reads the secrets files, to say which layer sets
+each value. Dispatched `Acme`/`Production`/`10.0.1.11` — run
+[#39](https://github.com/taljacob2/config-transform-pilot/actions/runs/36968181696) — every step
+passed on `0.27.0-alpha`, the log shows the new tree for every resource that uses a secret, and no
+secret value appears in it.
+
 ## Deliberately not validated by this pilot
 
 - **Real inventory against an actual solution repo.** This pilot's six projects, their config

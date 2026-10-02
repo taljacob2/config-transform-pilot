@@ -294,6 +294,9 @@ job-level-scoping bug this change caught in its own first CI run.
 - **Re-pinned to `0.26.0-alpha`** — picks up `init --template secrets` and YAML `set`'s
   array-of-objects matching; neither touches this repo's output. Verified via a real dispatch
   (`FINDINGS.md`'s "Re-pinning to `0.26.0-alpha`").
+- **Re-pinned to `0.27.0-alpha`** — the resolution report and `--list` show a tree per secret
+  (where it's used, and which layer sets its value). Output files are unchanged. Verified via a
+  real dispatch (`FINDINGS.md`'s "Re-pinning to `0.27.0-alpha`").
 
 ## Secrets
 
