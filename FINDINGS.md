@@ -679,6 +679,18 @@ in that repo): `{{CFSECRET_NAME}}` placeholders in plaintext overlays, values in
   run [#36](https://github.com/taljacob2/config-transform-pilot/actions/runs/36848738654) confirms
   the `.env` reaches the artifact with the real Production queue URL.
 
+## Re-pinning to `0.24.1-alpha`: implicit typing in what the tool writes
+
+`config-transform`'s `0.24.1-alpha` fixes the YAML "Norway problem" family in what the tool itself
+writes: `set` types a value as a number/boolean only if it reads back exactly as typed (no more
+`02134` → `2134`), YAML strings the tool writes are always double-quoted, and secret substitution
+quotes any plain YAML scalar it changes. This repo doesn't run `set` in CI and has no placeholder
+inside a plain YAML scalar (`ReportingService/config.yaml` has none), so nothing here changes:
+all 48 resolved files across the 8 combinations are byte-identical to `0.24.0-alpha`'s, verified
+locally before re-pinning. Dispatched `Acme`/`Production`/`10.0.1.11` — run
+[#37](https://github.com/taljacob2/config-transform-pilot/actions/runs/36954940334) — every step
+passed, and no secret value appears in its log.
+
 ## Deliberately not validated by this pilot
 
 - **Real inventory against an actual solution repo.** This pilot's six projects, their config

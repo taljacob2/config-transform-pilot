@@ -288,6 +288,9 @@ job-level-scoping bug this change caught in its own first CI run.
   whole-file Firebase secret uses `replace`, and git-crypt now covers only
   `.configtransform/**/*.secret.*` (see "Secrets" below). **Verified against real dispatches**: see
   `FINDINGS.md`'s "Re-pinning to `0.24.0-alpha`" section.
+- **Re-pinned to `0.24.1-alpha`** — the tool's own writes can no longer introduce YAML's "Norway
+  problem" or reformat numbers given as text. No output here changes; verified via a real
+  dispatch (`FINDINGS.md`'s "Re-pinning to `0.24.1-alpha`").
 
 ## Secrets
 
