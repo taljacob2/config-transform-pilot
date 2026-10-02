@@ -691,6 +691,16 @@ locally before re-pinning. Dispatched `Acme`/`Production`/`10.0.1.11` — run
 [#37](https://github.com/taljacob2/config-transform-pilot/actions/runs/36954940334) — every step
 passed, and no secret value appears in its log.
 
+## Re-pinning to `0.26.0-alpha`
+
+Skips straight from `0.24.1-alpha`: `0.25.0-alpha` added `init --template secrets` and
+`0.26.0-alpha` added YAML `set` array-of-objects matching (`$elemMatch`). This repo uses neither
+`init` nor `set` in CI and has no `$elemMatch` overlay, so nothing here changes — all 48 resolved
+files were checked byte-identical against the previous `main` build before release. Dispatched
+`Acme`/`Production`/`10.0.1.11` — run
+[#38](https://github.com/taljacob2/config-transform-pilot/actions/runs/36960373022) — every step
+passed on `0.26.0-alpha`, with no secret value in its log.
+
 ## Deliberately not validated by this pilot
 
 - **Real inventory against an actual solution repo.** This pilot's six projects, their config

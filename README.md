@@ -291,6 +291,9 @@ job-level-scoping bug this change caught in its own first CI run.
 - **Re-pinned to `0.24.1-alpha`** — the tool's own writes can no longer introduce YAML's "Norway
   problem" or reformat numbers given as text. No output here changes; verified via a real
   dispatch (`FINDINGS.md`'s "Re-pinning to `0.24.1-alpha`").
+- **Re-pinned to `0.26.0-alpha`** — picks up `init --template secrets` and YAML `set`'s
+  array-of-objects matching; neither touches this repo's output. Verified via a real dispatch
+  (`FINDINGS.md`'s "Re-pinning to `0.26.0-alpha`").
 
 ## Secrets
 
