@@ -713,6 +713,17 @@ each value. Dispatched `Acme`/`Production`/`10.0.1.11` — run
 passed on `0.27.0-alpha`, the log shows the new tree for every resource that uses a secret, and no
 secret value appears in it.
 
+## Re-pinning to `0.28.0-alpha`
+
+`0.28.0-alpha` adds Azure Key Vault as a secrets source, which this repo doesn't use (it has no
+Azure subscription; a design partner is checking that part against real vaults), and makes upper
+snake case mandatory for secret names. Every placeholder and secrets-file key here was already
+upper case. Before re-pinning, the resolved output of a `0.28.0-alpha` build was compared with a
+`0.27.0-alpha` build across 7 client/environment/host combinations: all 44 files were
+byte-identical. Dispatched `Acme`/`Production`/`10.0.1.11` — run
+[#40](https://github.com/taljacob2/config-transform-pilot/actions/runs/37735064106) — every step
+passed on `0.28.0-alpha`, and no secret value appears in its log.
+
 ## Deliberately not validated by this pilot
 
 - **Real inventory against an actual solution repo.** This pilot's six projects, their config
